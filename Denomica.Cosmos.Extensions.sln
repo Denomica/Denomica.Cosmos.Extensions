@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denomica.Cosmos.Extensions", "Denomica.Cosmos.Extensions\Denomica.Cosmos.Extensions.csproj", "{8993D6FD-5EC5-4CD5-BF26-DA0C15AEBCD1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Denomica.Cosmos.Extensions", "Denomica.Cosmos.Extensions\Denomica.Cosmos.Extensions.csproj", "{8993D6FD-5EC5-4CD5-BF26-DA0C15AEBCD1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denomica.Cosmos.Extensions.Tests", "Denomica.Cosmos.Extensions.Tests\Denomica.Cosmos.Extensions.Tests.csproj", "{DCB7EF93-D054-452E-82A3-ABC8BAFB3579}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{8993D6FD-5EC5-4CD5-BF26-DA0C15AEBCD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8993D6FD-5EC5-4CD5-BF26-DA0C15AEBCD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8993D6FD-5EC5-4CD5-BF26-DA0C15AEBCD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCB7EF93-D054-452E-82A3-ABC8BAFB3579}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCB7EF93-D054-452E-82A3-ABC8BAFB3579}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCB7EF93-D054-452E-82A3-ABC8BAFB3579}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCB7EF93-D054-452E-82A3-ABC8BAFB3579}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

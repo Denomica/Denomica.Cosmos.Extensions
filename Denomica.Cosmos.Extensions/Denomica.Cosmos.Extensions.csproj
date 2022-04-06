@@ -7,10 +7,12 @@
 
   <ItemGroup>
     <Content Remove="C:\Users\mika.berglund\.nuget\packages\microsoft.azure.cosmos\3.23.0\contentFiles\any\netstandard2.0\ThirdPartyNotice.txt" />
+    <Content Remove="C:\Users\mika.berglund\.nuget\packages\microsoft.azure.cosmos\3.26.1\contentFiles\any\netstandard2.0\ThirdPartyNotice.txt" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.23.0" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.26.1" />
+    <PackageReference Include="System.Text.Json" Version="6.0.2" />
   </ItemGroup>
 
 </Project>
