@@ -7,3 +7,7 @@ A library that facilitates working with data in Azure Cosmos DB using the [.NET 
 ## Main Features
 
 - Handle all HTTP 429 responses
+  - Upsert
+  - Query
+  - Delete
+- Return query results as async enumerable collections
