@@ -61,21 +61,23 @@ namespace Denomica.Cosmos.Extensions.Tests
 
             Options = ServiceProvider.GetRequiredService<ConnectionOptions>();
             DataContainer = ServiceProvider.GetRequiredService<Container>();
+            Proxy = new ContainerProxy(DataContainer);
         }
 
         private static ServiceProvider ServiceProvider = null!;
         private static ConnectionOptions Options = null!;
         private static Container DataContainer = null!;
+        private static ContainerProxy Proxy = null!;
 
 
         [TestInitialize]
         public async Task TestInit()
         {
             var tasks = new List<Task<ResponseMessage>>();
-            var items = DataContainer.QueryDocumentsAsync<ContainerItem>(new QueryDefinition("select c.id,c.partition from c"));
+            var items = Proxy.QueryItemsAsync<ContainerItem>(new QueryDefinition("select c.id,c.partition from c"));
             await foreach(var item in items)
             {
-                tasks.Add(DataContainer.DeleteDocumentAsync(item.Id, item.Partition));
+                tasks.Add(Proxy.DeleteItemAsync(item.Id, item.Partition));
             }
 
             await Task.WhenAll(tasks);
@@ -105,7 +107,7 @@ namespace Denomica.Cosmos.Extensions.Tests
                     { "EmployeeNumber", i }
                 };
 
-                upsertTasks.Add(DataContainer.UpsertDocumentAsync(doc));
+                upsertTasks.Add(Proxy.UpsertItemAsync(doc));
             }
 
             await Task.WhenAll(upsertTasks);
@@ -122,9 +124,9 @@ namespace Denomica.Cosmos.Extensions.Tests
         [Description("Inserts one item and checks the item count.")]
         public async Task SelectCount01()
         {
-            var response = await DataContainer.UpsertDocumentAsync(new { Id = Guid.NewGuid() });
+            var response = await Proxy.UpsertItemAsync(new { Id = Guid.NewGuid() });
             var query = new QueryDefinition("select count(1) from c");
-            var result = await DataContainer.QueryDocumentsAsync<Dictionary<string, JsonElement>>(query).ToListAsync();
+            var result = await Proxy.QueryItemsAsync<Dictionary<string, JsonElement>>(query).ToListAsync();
             Assert.AreEqual(1, result.Count);
             var count = result.First()["$1"];
             Assert.AreEqual(1, count.GetInt32());
@@ -141,7 +143,7 @@ namespace Denomica.Cosmos.Extensions.Tests
                 { "Partition", Guid.NewGuid() }
             };
 
-            var response = await DataContainer.UpsertDocumentAsync(doc);
+            var response = await Proxy.UpsertItemAsync(doc);
             Assert.IsTrue(response.StatusCode.IsSuccess());
         }
 
@@ -149,7 +151,7 @@ namespace Denomica.Cosmos.Extensions.Tests
         private async Task<int> GetContainerCountAsync()
         {
             var query = new QueryDefinition("select count(1) from c");
-            var result = await DataContainer.QueryDocumentsAsync<Dictionary<string, JsonElement>>(query).ToListAsync();
+            var result = await Proxy.QueryItemsAsync<Dictionary<string, JsonElement>>(query).ToListAsync();
             var count = result.First()["$1"];
             return count.GetInt32();
         }
@@ -162,4 +164,5 @@ namespace Denomica.Cosmos.Extensions.Tests
         public string Partition { get; set; } = null!;
 
     }
+
 }
