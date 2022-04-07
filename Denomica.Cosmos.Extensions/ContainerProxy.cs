@@ -37,6 +37,7 @@ namespace Denomica.Cosmos.Extensions
         public async Task<ResponseMessage> DeleteItemAsync(string id, PartitionKey partition, bool throwIfNotfound = true)
         {
             bool retry = false;
+            int retryCount = 0;
             ResponseMessage response = null!;
 
             do
@@ -44,12 +45,13 @@ namespace Denomica.Cosmos.Extensions
                 try
                 {
                     response = await this.Container.DeleteItemStreamAsync(id, partition);
-                    retry = await this.HandleResponseAsync(response, throwIfNotFound: throwIfNotfound);
+                    retry = await this.HandleResponseAsync(response, retryCount, throwIfNotFound: throwIfNotfound);
                 }
                 catch (CosmosException ex)
                 {
-                    retry = await this.HandleExceptionAsync(ex, throwIfNotFound: throwIfNotfound);
+                    retry = await this.HandleExceptionAsync(ex, retryCount, throwIfNotFound: throwIfNotfound);
                 }
+                retryCount++;
             } while (retry);
 
             return response;
@@ -124,19 +126,20 @@ namespace Denomica.Cosmos.Extensions
         {
             bool retry = false;
             ItemResponse<TItem> response = null!;
-
+            int retryCount = 0;
             do
             {
                 try
                 {
                     response = await this.Container.UpsertItemAsync(item, partitionKey);
-                    retry = await this.HandleResponseAsync(response);
+                    retry = await this.HandleResponseAsync(response, retryCount);
                 }
                 catch (CosmosException ex)
                 {
-                    retry = await this.HandleExceptionAsync(ex);
+                    retry = await this.HandleExceptionAsync(ex, retryCount);
                 }
 
+                retryCount++;
             } while (retry);
 
             return response;
@@ -148,19 +151,21 @@ namespace Denomica.Cosmos.Extensions
         {
             ResponseMessage? response = null!;
             bool retry = false;
+            int retryCount = 0;
 
             do
             {
-                retry = false;
                 try
                 {
                     response = await responseProvider();
-                    retry = await this.HandleResponseAsync(response);
+                    retry = await this.HandleResponseAsync(response, retryCount);
                 }
                 catch (CosmosException ex)
                 {
-                    retry = await this.HandleExceptionAsync(ex);
+                    retry = await this.HandleExceptionAsync(ex, retryCount);
                 }
+
+                retryCount++;
             } while (retry);
 
             if (null == response)
@@ -180,14 +185,14 @@ namespace Denomica.Cosmos.Extensions
         /// <remarks>
         /// If a retry after delay was found in the response, this method will wait for that amount of time before returning.
         /// </remarks>
-        private async Task<bool> HandleResponseAsync<TResource>(Response<TResource>? response)
+        private async Task<bool> HandleResponseAsync<TResource>(Response<TResource>? response, int retryCount)
         {
             if (null != response)
             {
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     var delay = this.ReadRetryAfterDelay(response.Headers);
-                    await Task.Delay(delay);
+                    await this.WaitAsync(delay, retryCount);
                     return true;
                 }
             }
@@ -204,14 +209,14 @@ namespace Denomica.Cosmos.Extensions
         /// If the response was a HTTP 429, then this method will attempt to determine for how long to wait before retrying
         /// the operation that produced the response.
         /// </remarks>
-        private async Task<bool> HandleResponseAsync(ResponseMessage? response, int defaultRetryAfterMilliseconds = 5000, bool throwIfNotFound = true)
+        private async Task<bool> HandleResponseAsync(ResponseMessage? response, int retryCount, int defaultRetryAfterMilliseconds = 5000, bool throwIfNotFound = true)
         {
             if (null != response)
             {
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     TimeSpan delay = this.ReadRetryAfterDelay(response.Headers);
-                    await Task.Delay(delay);
+                    await this.WaitAsync(delay, retryCount);
                     return true;
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
@@ -224,6 +229,36 @@ namespace Denomica.Cosmos.Extensions
                 else if (!response.IsSuccessStatusCode)
                 {
                     throw new Exception($"Unexpected status code received from Cosmos DB. Status code: {response.StatusCode}");
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Handles the exception if it was thrown from HTTP status 429.
+        /// </summary>
+        /// <param name="ex">The exception to handle.</param>
+        /// <returns>Returns <c>true</c> if the exception was associated with HTTP 429 and the operation that threw the exception needs to be retried.</returns>
+        private async Task<bool> HandleExceptionAsync(CosmosException? ex, int retryCount, bool throwIfNotFound = true)
+        {
+            if (null != ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    await this.WaitAsync(ex.RetryAfter ?? TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds), retryCount);
+                    return true;
+                }
+                else if (ex.StatusCode == HttpStatusCode.NotFound)
+                {
+                    if (throwIfNotFound)
+                    {
+                        throw new Exception($"An item was not found. Status: {ex.StatusCode}.", ex);
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Unexpected status code from Cosmos DB. Status code: {ex.StatusCode}.", ex);
                 }
             }
 
@@ -255,34 +290,19 @@ namespace Denomica.Cosmos.Extensions
         }
 
         /// <summary>
-        /// Handles the exception if it was thrown from HTTP status 429.
+        /// Waits for the given timespan to pass, optionally using <paramref name="retryCount"/> as factor for modifying the delay.
         /// </summary>
-        /// <param name="ex">The exception to handle.</param>
-        /// <returns>Returns <c>true</c> if the exception was associated with HTTP 429 and the operation that threw the exception needs to be retried.</returns>
-        private async Task<bool> HandleExceptionAsync(CosmosException? ex, bool throwIfNotFound = true)
+        /// <param name="delay">The delay to wait before the method returns.</param>
+        /// <param name="retryCount">The number of times an operation has been retried.</param>
+        private Task WaitAsync(TimeSpan delay, int retryCount)
         {
-            if (null != ex)
-            {
-                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    await Task.Delay(ex.RetryAfter ?? TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds));
-                    return true;
-                }
-                else if (ex.StatusCode == HttpStatusCode.NotFound)
-                {
-                    if (throwIfNotFound)
-                    {
-                        throw new Exception($"An item was not found. Status: {ex.StatusCode}.", ex);
-                    }
-                }
-                else
-                {
-                    throw new Exception($"Unexpected status code from Cosmos DB. Status code: {ex.StatusCode}.", ex);
-                }
-            }
-
-            return false;
+            // If we start to get a lot of retries and the retry count increases,
+            // it probably means that we are at least temporarily overloading the server
+            // quite heavily. The more retry counts we get, the more we will increase
+            // the delay from the given time span.
+            double factor = 1 + (.2 * retryCount);
+            var newDelay = delay * factor;
+            return Task.Delay(newDelay);
         }
-
     }
 }
