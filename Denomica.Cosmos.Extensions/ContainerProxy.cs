@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Denomica.Cosmos.Extensions.Internal;
+using System.Net;
+using System.Net.Http.Headers;
 
 namespace Denomica.Cosmos.Extensions
 {
@@ -25,19 +26,80 @@ namespace Denomica.Cosmos.Extensions
 
 
 
-        public Task<ResponseMessage> DeleteItemAsync(string id, PartitionKey partition, bool throwIfNotfound = true)
+        /// <summary>
+        /// Deletes the document with the given <paramref name="id"/> and <paramref name="partition"/>.
+        /// </summary>
+        /// <param name="id">The ID of the document to delete.</param>
+        /// <param name="partition">The partition of the document to delete.</param>
+        /// <param name="throwIfNotfound">
+        /// Specifies whether to throw an exception if the specified document is not found. Defaults to <c>true</c>.
+        /// </param>
+        public async Task<ResponseMessage> DeleteItemAsync(string id, PartitionKey partition, bool throwIfNotfound = true)
         {
-            return this.Container.DeleteItemAsync(id, partition, throwIfNotfound: throwIfNotfound, this.DefaultRetryAfterMilliseconds);
+            bool retry = false;
+            ResponseMessage response = null!;
+
+            do
+            {
+                try
+                {
+                    response = await this.Container.DeleteItemStreamAsync(id, partition);
+                    retry = await this.HandleResponseAsync(response, throwIfNotFound: throwIfNotfound);
+                }
+                catch (CosmosException ex)
+                {
+                    retry = await this.HandleExceptionAsync(ex, throwIfNotFound: throwIfNotfound);
+                }
+            } while (retry);
+
+            return response;
         }
 
+        /// <summary>
+        /// Deletes the document with the given <paramref name="id"/> and <paramref name="partition"/>.
+        /// </summary>
+        /// <param name="id">The ID of the document to delete.</param>
+        /// <param name="partition">The partition of the document to delete.</param>
+        /// <param name="throwIfNotfound">
+        /// Specifies whether to throw an exception if the specified document is not found. Defaults to <c>true</c>.
+        /// </param>
         public Task<ResponseMessage> DeleteItemAsync(string id, string? partition, bool throwIfNotfound = true)
         {
             return this.DeleteItemAsync(id, partition?.Length > 0 ? new PartitionKey(partition) : PartitionKey.None, throwIfNotfound: throwIfNotfound);
         }
 
-        public IAsyncEnumerable<JsonElement> QueryItemsAsync(QueryDefinition query)
+        public async IAsyncEnumerable<JsonElement> QueryItemsAsync(QueryDefinition query)
         {
-            return this.Container.QueryItemsAsync(query, defaultRetryAfterMilliseconds: this.DefaultRetryAfterMilliseconds);
+            string? continuationToken = null;
+
+            do
+            {
+                var response = await this.GetResponseAsync(async () =>
+                {
+                    var iterator = this.Container.GetItemQueryStreamIterator(query, continuationToken: continuationToken);
+                    if (iterator.HasMoreResults)
+                    {
+                        return await iterator.ReadNextAsync();
+                    }
+
+                    return null;
+                });
+                continuationToken = response.ContinuationToken;
+
+                if (null != response?.Content)
+                {
+                    var json = await JsonDocument.ParseAsync(response.Content);
+                    if (json.RootElement.TryGetProperty("Documents", out var docs) && docs.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in docs.EnumerateArray())
+                        {
+                            yield return item;
+                        }
+                    }
+                }
+            } while (continuationToken?.Length > 0);
+
+            yield break;
         }
 
         public async IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(QueryDefinition query)
@@ -60,7 +122,166 @@ namespace Denomica.Cosmos.Extensions
 
         public async Task<ItemResponse<TItem>> UpsertItemAsync<TItem>(TItem item, PartitionKey? partitionKey = null)
         {
-            return await this.Container.UpsertItemAsync<TItem>(item, partitionKey: partitionKey, defaultRetryAfterMilliseconds: this.DefaultRetryAfterMilliseconds);
+            bool retry = false;
+            ItemResponse<TItem> response = null!;
+
+            do
+            {
+                try
+                {
+                    response = await this.Container.UpsertItemAsync(item, partitionKey);
+                    retry = await this.HandleResponseAsync(response);
+                }
+                catch (CosmosException ex)
+                {
+                    retry = await this.HandleExceptionAsync(ex);
+                }
+
+            } while (retry);
+
+            return response;
+        }
+
+
+
+        private async Task<ResponseMessage> GetResponseAsync(Func<Task<ResponseMessage?>> responseProvider)
+        {
+            ResponseMessage? response = null!;
+            bool retry = false;
+
+            do
+            {
+                retry = false;
+                try
+                {
+                    response = await responseProvider();
+                    retry = await this.HandleResponseAsync(response);
+                }
+                catch (CosmosException ex)
+                {
+                    retry = await this.HandleExceptionAsync(ex);
+                }
+            } while (retry);
+
+            if (null == response)
+            {
+                throw new Exception("Unable to resolve response.");
+            }
+            return response;
+        }
+
+        /// <summary>
+        /// Handles the given response by checking for a HTTP 429 status code.
+        /// </summary>
+        /// <typeparam name="TResource"></typeparam>
+        /// <param name="response">The response to examine.</param>
+        /// <param name="defaultRetryAfterMilliseconds">The default delay to wait for in case the response contained HTTP status code 429.</param>
+        /// <returns>Returns <c>true</c> if a retry delay was found in the response.</returns>
+        /// <remarks>
+        /// If a retry after delay was found in the response, this method will wait for that amount of time before returning.
+        /// </remarks>
+        private async Task<bool> HandleResponseAsync<TResource>(Response<TResource>? response)
+        {
+            if (null != response)
+            {
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    var delay = this.ReadRetryAfterDelay(response.Headers);
+                    await Task.Delay(delay);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Handles the response by checking for HTTP status 429.
+        /// </summary>
+        /// <param name="response">The response to handle.</param>
+        /// <param name="defaultRetryAfterMilliseconds"></param>
+        /// <returns>Returns <c>true</c> if the response was a HTTP 429 and if the operation should be retried after this method returns.</returns>
+        /// <remarks>
+        /// If the response was a HTTP 429, then this method will attempt to determine for how long to wait before retrying
+        /// the operation that produced the response.
+        /// </remarks>
+        private async Task<bool> HandleResponseAsync(ResponseMessage? response, int defaultRetryAfterMilliseconds = 5000, bool throwIfNotFound = true)
+        {
+            if (null != response)
+            {
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    TimeSpan delay = this.ReadRetryAfterDelay(response.Headers);
+                    await Task.Delay(delay);
+                    return true;
+                }
+                else if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    if (throwIfNotFound)
+                    {
+                        throw new Exception($"An item was not found. Status: {response.StatusCode}.");
+                    }
+                }
+                else if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Unexpected status code received from Cosmos DB. Status code: {response.StatusCode}");
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Reads the <c>Retry-After</c> header from the given <paramref name="headers"/> and returns that information as
+        /// a <see cref="TimeSpan"/> struct.
+        /// </summary>
+        /// <param name="headers">The headers to read from.</param>
+        /// <param name="defaultRetryAfterMilliseconds">The default delay if no <c>Retry-After</c> header is found.</param>
+        /// <remarks>
+        /// If the current headers do not contain a <c>Retry-After</c> header value, the default <paramref name="defaultRetryAfterMilliseconds"/>
+        /// is used as delay.
+        /// </remarks>
+        private TimeSpan ReadRetryAfterDelay(Headers? headers)
+        {
+            TimeSpan delay = TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds);
+            if (null != headers)
+            {
+                var retryAfter = headers["Retry-After"];
+                if (RetryConditionHeaderValue.TryParse(retryAfter, out var h))
+                {
+                    delay = h.Delta ?? delay;
+                }
+            }
+            return delay;
+        }
+
+        /// <summary>
+        /// Handles the exception if it was thrown from HTTP status 429.
+        /// </summary>
+        /// <param name="ex">The exception to handle.</param>
+        /// <returns>Returns <c>true</c> if the exception was associated with HTTP 429 and the operation that threw the exception needs to be retried.</returns>
+        private async Task<bool> HandleExceptionAsync(CosmosException? ex, bool throwIfNotFound = true)
+        {
+            if (null != ex)
+            {
+                if (ex.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    await Task.Delay(ex.RetryAfter ?? TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds));
+                    return true;
+                }
+                else if (ex.StatusCode == HttpStatusCode.NotFound)
+                {
+                    if (throwIfNotFound)
+                    {
+                        throw new Exception($"An item was not found. Status: {ex.StatusCode}.", ex);
+                    }
+                }
+                else
+                {
+                    throw new Exception($"Unexpected status code from Cosmos DB. Status code: {ex.StatusCode}.", ex);
+                }
+            }
+
+            return false;
         }
 
     }
