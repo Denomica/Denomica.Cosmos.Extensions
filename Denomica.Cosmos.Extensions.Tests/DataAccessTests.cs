@@ -10,6 +10,7 @@ using System.IO;
 using System.Collections.Generic;
 using System;
 using System.Text.Json;
+using Microsoft.Azure.Cosmos.Linq;
 
 namespace Denomica.Cosmos.Extensions.Tests
 {
@@ -71,13 +72,14 @@ namespace Denomica.Cosmos.Extensions.Tests
 
 
         [TestInitialize]
-        public async Task TestInit()
+        [TestCleanup]
+        public async Task ClearContainer()
         {
             var tasks = new List<Task<ResponseMessage>>();
             var items = Proxy.QueryItemsAsync<ContainerItem>(new QueryDefinition("select c.id,c.partition from c"));
             await foreach(var item in items)
             {
-                tasks.Add(Proxy.DeleteItemAsync(item.Id, item.Partition));
+                tasks.Add(Proxy.DeleteItemAsync(item.Id, Proxy.CreatePartitionKey(item.Partition)));
             }
 
             await Task.WhenAll(tasks);
@@ -85,7 +87,7 @@ namespace Denomica.Cosmos.Extensions.Tests
             var errors = from x in tasks where !x.Result.StatusCode.IsSuccess() select x.Result;
             if(errors.Any())
             {
-                throw new Exception("Unable to clear all items from container before running unit test.");
+                throw new Exception("Unable to clear all items from container.");
             }
         }
 
@@ -116,6 +118,90 @@ namespace Denomica.Cosmos.Extensions.Tests
 
             var count = await this.GetContainerCountAsync();
             Assert.AreEqual(itemCount, count);
+        }
+
+
+
+        [TestMethod]
+        [Description("Stores items in the database and queries for them using a QueryDefinition object.")]
+        public async Task Query01()
+        {
+            var partitionCount = 50;
+            var itemCount = 10;
+
+            var upsertTasks = new List<Task>();
+            for(var p = 0; p < partitionCount; p++)
+            {
+                for(var i = 0; i < itemCount; i++)
+                {
+                    upsertTasks.Add(Proxy.UpsertItemAsync(new { Id = Guid.NewGuid(), Partition = p, Value = p * i }));
+                }
+            }
+
+            await Task.WhenAll(upsertTasks);
+
+            for(var p = 0; p < partitionCount; p++)
+            {
+                var query = new QueryDefinitionBuilder()
+                    .AppendQueryText("select * from c")
+                    .AppendQueryText(" where")
+
+                    .AppendQueryText(" c[\"partition\"] = @partition")
+                    .AddParameter("@partition", p)
+
+                    .AppendQueryText(" order by c[\"value\"] desc")
+                    .Build();
+
+                var items = await Proxy.QueryItemsAsync(query).ToListAsync();
+                Assert.AreEqual(itemCount, items.Count);
+
+                var prevValue = p * itemCount + 1;
+                foreach(var item in items)
+                {
+                    var valueProp = item.GetProperty("value");
+                    var val = valueProp.GetInt32();
+
+                    Assert.IsTrue(prevValue >= val);
+                    prevValue = val;
+                }
+
+            }
+        }
+
+        [TestMethod]
+        [Description("Creates a couple of items and queries for them with Linq expressions.")]
+        public async Task Query02()
+        {
+            var partitions = new List<string>();
+            var partitionCount = 100;
+            var itemCountPerPartition = 20;
+
+            var upsertTasks = new List<Task>();
+            for(var p = 0; p < partitionCount; p++)
+            {
+                var partition = $"{Guid.NewGuid()}";
+                partitions.Add(partition);
+
+                for(var i = 0; i < itemCountPerPartition; i++)
+                {
+                    upsertTasks.Add(Proxy.UpsertItemAsync(new Item1 { Id = Guid.NewGuid().ToString(), Index = i, Partition = partition }));
+                }
+            }
+
+            await Task.WhenAll(upsertTasks);
+
+            foreach (var p in partitions)
+            {
+                var query = Proxy.Container
+                    .GetItemLinqQueryable<Item1>()
+                    .Where(x => x.Partition == p)
+                    .OrderBy(x => x.Index)
+                    .ToQueryDefinition();
+
+                var items = await Proxy.QueryItemsAsync<Item1>(query).ToListAsync();
+                Assert.AreEqual(itemCountPerPartition, items.Count);
+                CollectionAssert.AllItemsAreUnique(new List<int>(from x in items select x.Index));
+            }
         }
 
 
@@ -161,8 +247,16 @@ namespace Denomica.Cosmos.Extensions.Tests
     {
         public string Id { get; set; } = null!;
 
+        public object Partition { get; set; } = null!;
+    }
+
+    public class Item1
+    {
+        public string Id { get; set; } = null!;
+
         public string Partition { get; set; } = null!;
 
+        public int Index { get; set; }
     }
 
 }

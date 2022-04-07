@@ -24,11 +24,11 @@ namespace Denomica.Cosmos.Extensions
         /// <summary>
         /// Enumerates the async enumerable collection and returns it as a list object.
         /// </summary>
-        /// <typeparam name="TDocument">The type of items in the resulting list.</typeparam>
+        /// <typeparam name="TItem">The type of items in the resulting list.</typeparam>
         /// <param name="items">The items to produce a list from.</param>
-        public static async Task<IList<TDocument>> ToListAsync<TDocument>(this IAsyncEnumerable<TDocument> items)
+        public static async Task<IList<TItem>> ToListAsync<TItem>(this IAsyncEnumerable<TItem> items)
         {
-            var list = new List<TDocument>();
+            var list = new List<TItem>();
 
             await foreach (var item in items)
             {
