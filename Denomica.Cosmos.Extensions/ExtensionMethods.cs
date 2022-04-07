@@ -22,46 +22,54 @@ namespace Denomica.Cosmos.Extensions
     {
 
         /// <summary>
-        /// Deletes the item with the given <paramref name="id"/> and <paramref name="partition"/>.
+        /// Deletes the document with the given <paramref name="id"/> and <paramref name="partition"/>.
         /// </summary>
         /// <param name="container">The container to delete from.</param>
-        /// <param name="id">The ID of the item to delete.</param>
-        /// <param name="partition">The partition of the item to delete.</param>
-        /// <param name="throwIfNotfound">Specifies whether to throw an exception if the specified item is not found. Defaults to <c>true</c>.</param>
-        /// <param name="defaultRetryAfterMilliseconds">The number of milliseconds to wait before retrying the operation in case the server responds with HTTP 429. This value is only used if no other information is received with the HTTP 429 response.</param>
-        /// <exception cref="Exception">The exception that is thrown </exception>
-        public static async Task DeleteItemAsync(this Container container, string id, PartitionKey partition, bool throwIfNotfound = true, int defaultRetryAfterMilliseconds = 5000)
+        /// <param name="id">The ID of the document to delete.</param>
+        /// <param name="partition">The partition of the document to delete.</param>
+        /// <param name="throwIfNotfound">
+        /// Specifies whether to throw an exception if the specified document is not found. Defaults to <c>true</c>.
+        /// </param>
+        /// <param name="defaultRetryAfterMilliseconds">
+        /// The number of milliseconds to wait before retrying the operation in case the server responds with HTTP 429. This value 
+        /// is only used if no other information is received with the HTTP 429 response.
+        /// </param>
+        public static async Task<ResponseMessage> DeleteDocumentAsync(this Container container, string id, PartitionKey partition, bool throwIfNotfound = true, int defaultRetryAfterMilliseconds = 5000)
         {
             TimeSpan delay = TimeSpan.Zero;
             bool retry = false;
+            ResponseMessage response = null!;
+
             do
             {
                 try
                 {
-                    var response = await container.DeleteItemStreamAsync(id, partition);
-                    retry = await response.HandleResponseAsync(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
+                    response = await container.DeleteItemStreamAsync(id, partition);
+                    retry = await response.HandleResponseAsync(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds, throwIfNotFound: throwIfNotfound);
                 }
                 catch(CosmosException ex)
                 {
                     retry = await ex.HandleExceptionAsync(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds, throwIfNotFound: throwIfNotfound);
                 }
             } while(retry);
+
+            return response;
         }
 
         /// <summary>
-        /// Deletes the item with the given <paramref name="id"/> and <paramref name="partitionKey"/>.
+        /// Deletes the document with the given <paramref name="id"/> and <paramref name="partitionKey"/>.
         /// </summary>
-        /// <param name="container">The container to delete the item from.</param>
-        /// <param name="id">The ID of the item to delete.</param>
-        /// <param name="partitionKey">The partition key of the item to delete.</param>
-        /// <param name="throwIfNotFound">Specifies whether to throw an exception if the specified item is not found.</param>
+        /// <param name="container">The container to delete the document from.</param>
+        /// <param name="id">The ID of the document to delete.</param>
+        /// <param name="partitionKey">The partition key of the document to delete.</param>
+        /// <param name="throwIfNotFound">Specifies whether to throw an exception if the specified document is not found.</param>
         /// <param name="defaultRetryAfterMilliseconds">
         /// The default amount of milliseconds to wait in case the server responds with HTTP status 492 (too many requests) 
         /// and that response does not contain a specified interwal to wait before retrying the operation.
         /// </param>
-        public static Task DeleteItemAsync(this Container container, string id, string partitionKey, bool throwIfNotFound = true, int defaultRetryAfterMilliseconds = 5000)
+        public static Task<ResponseMessage> DeleteDocumentAsync(this Container container, string id, string? partitionKey, bool throwIfNotFound = true, int defaultRetryAfterMilliseconds = 5000)
         {
-            return container.DeleteItemAsync(id, new PartitionKey(partitionKey), throwIfNotfound: throwIfNotFound, defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
+            return container.DeleteDocumentAsync(id, partitionKey?.Length > 0 ? new PartitionKey(partitionKey) : PartitionKey.None, throwIfNotfound: throwIfNotFound, defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
         }
 
         /// <summary>
@@ -97,7 +105,25 @@ namespace Denomica.Cosmos.Extensions
             return response;
         }
 
-        public static async IAsyncEnumerable<JsonElement> QueryAsync(this Container container, QueryDefinition query, int defaultRetryAfterMilliseconds = 5000)
+        /// <summary>
+        /// Returns whether the given status code indicates a successful operation.
+        /// </summary>
+        public static bool IsSuccess(this HttpStatusCode statusCode)
+        {
+            int code = (int)statusCode;
+            return code >= 200 && code < 300;
+        }
+
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and returns the results as a collection of <see cref="JsonElement"/> objects.
+        /// </summary>
+        /// <param name="container">The container to query.</param>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="defaultRetryAfterMilliseconds">The default time to wait in case the server responds with HTTP 429 if no other information is available in the response.</param>
+        /// <remarks>
+        /// You can use the <see cref="QueryDefinitionBuilder"/> class to build the value for the <paramref name="query"/> parameter.
+        /// </remarks>
+        public static async IAsyncEnumerable<JsonElement> QueryDocumentsAsync(this Container container, QueryDefinition query, int defaultRetryAfterMilliseconds = 5000)
         {
             string? continuationToken = null;
 
@@ -131,12 +157,23 @@ namespace Denomica.Cosmos.Extensions
             yield break;
         }
 
-        public static async IAsyncEnumerable<TItem> QueryAsync<TItem>(this Container container, QueryDefinition query, int defaultRetryAfterMilliseconds = 5000, JsonSerializerOptions? serializationOptions = null)
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and returns the results as a collection of <typeparamref name="TDocument"/> objects.
+        /// </summary>
+        /// <typeparam name="TDocument">The type of document to return the query results as.</typeparam>
+        /// <param name="container">The container to query.</param>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="defaultRetryAfterMilliseconds">The default time to wait in case the server responds with HTTP 429 if no other information is available in the response.</param>
+        /// <param name="serializationOptions">Optional serialization options to use when deserializing a <see cref="JsonElement"/> to the type specified in <typeparamref name="TDocument"/>.</param>
+        /// <remarks>
+        /// You can use the <see cref="QueryDefinitionBuilder"/> class to build the value for the <paramref name="query"/> parameter.
+        /// </remarks>
+        public static async IAsyncEnumerable<TDocument> QueryDocumentsAsync<TDocument>(this Container container, QueryDefinition query, int defaultRetryAfterMilliseconds = 5000, JsonSerializerOptions? serializationOptions = null)
         {
             var options = serializationOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
-            await foreach(var item in container.QueryAsync(query, defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds))
+            await foreach(var item in container.QueryDocumentsAsync(query, defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds))
             {
-                var resultItem = JsonSerializer.Deserialize<TItem>(item, options: options);
+                var resultItem = JsonSerializer.Deserialize<TDocument>(item, options: options);
                 if(null != resultItem)
                 {
                     yield return resultItem;
@@ -144,9 +181,14 @@ namespace Denomica.Cosmos.Extensions
             }
         }
 
-        public static async Task<IList<TItem>> ToListAsync<TItem>(this IAsyncEnumerable<TItem> items)
+        /// <summary>
+        /// Enumerates the async enumerable collection and returns it as a list object.
+        /// </summary>
+        /// <typeparam name="TDocument">The type of items in the resulting list.</typeparam>
+        /// <param name="items">The items to produce a list from.</param>
+        public static async Task<IList<TDocument>> ToListAsync<TDocument>(this IAsyncEnumerable<TDocument> items)
         {
-            var list = new List<TItem>();
+            var list = new List<TDocument>();
 
             await foreach(var item in items)
             {
@@ -156,7 +198,78 @@ namespace Denomica.Cosmos.Extensions
             return list;
         }
 
+        /// <summary>
+        /// Upserts (updates or inserts) the given <paramref name="document"/> into the container.
+        /// </summary>
+        /// <param name="container">The container to upsert into.</param>
+        /// <param name="document">The document to upsert.</param>
+        /// <param name="partitionKey">An optional partition key to specify for the document.</param>
+        /// <param name="defaultRetryAfterMilliseconds">
+        /// The default number of milliseconds to wait before retrying in case the server returns HTTP 429
+        /// and no other information is available in the response.
+        /// </param>
+        public static async Task<ItemResponse<object>> UpsertDocumentAsync(this Container container, object document, PartitionKey? partitionKey = null, int defaultRetryAfterMilliseconds = 5000)
+        {
+            return await container.UpsertDocumentAsync<object>(document, partitionKey: partitionKey, defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
+        }
 
+        /// <summary>
+        /// Upserts (updates or inserts) the given <paramref name="document"/> into the container.
+        /// </summary>
+        /// <typeparam name="TDocument">The type of the document to upsert.</typeparam>
+        /// <param name="container">The container to upsert into.</param>
+        /// <param name="document">The document to upsert.</param>
+        /// <param name="partitionKey">An optional partition key to specify for the document.</param>
+        /// <param name="defaultRetryAfterMilliseconds">
+        /// The default number of milliseconds to wait before retrying in case the server returns HTTP 429
+        /// and no other information is available in the response.
+        /// </param>
+        public static async Task<ItemResponse<TDocument>> UpsertDocumentAsync<TDocument>(this Container container, TDocument document, PartitionKey? partitionKey = null, int defaultRetryAfterMilliseconds = 5000)
+        {
+            bool retry = false;
+            ItemResponse<TDocument> response = null!;
+
+            do
+            {
+                try
+                {
+                    response = await container.UpsertItemAsync(document, partitionKey);
+                    retry = await response.HandleResponseAsync(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
+                }
+                catch (CosmosException ex)
+                {
+                    retry = await ex.HandleExceptionAsync(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
+                }
+
+            } while (retry);
+
+            return response;
+        }
+
+
+        /// <summary>
+        /// Handles the given response by checking for a HTTP 429 status code.
+        /// </summary>
+        /// <typeparam name="TResource"></typeparam>
+        /// <param name="response">The response to examine.</param>
+        /// <param name="defaultRetryAfterMilliseconds">The default delay to wait for in case the response contained HTTP status code 429.</param>
+        /// <returns>Returns <c>true</c> if a retry delay was found in the response.</returns>
+        /// <remarks>
+        /// If a retry after delay was found in the response, this method will wait for that amount of time before returning.
+        /// </remarks>
+        private static async Task<bool> HandleResponseAsync<TResource>(this Response<TResource>? response, int defaultRetryAfterMilliseconds = 5000)
+        {
+            if(null != response)
+            {
+                if(response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    var delay = response.Headers.ReadRetryAfterDelay(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
+                    await Task.Delay(delay);
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>
         /// Handles the response by checking for HTTP status 429.
@@ -168,21 +281,22 @@ namespace Denomica.Cosmos.Extensions
         /// If the response was a HTTP 429, then this method will attempt to determine for how long to wait before retrying
         /// the operation that produced the response.
         /// </remarks>
-        private static async Task<bool> HandleResponseAsync(this ResponseMessage? response, int defaultRetryAfterMilliseconds = 5000)
+        private static async Task<bool> HandleResponseAsync(this ResponseMessage? response, int defaultRetryAfterMilliseconds = 5000, bool throwIfNotFound = true)
         {
             if(null != response)
             {
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    TimeSpan delay = TimeSpan.FromMilliseconds(defaultRetryAfterMilliseconds);
-                    var retryAfter = response.Headers["Retry-After"];
-                    if (RetryConditionHeaderValue.TryParse(retryAfter, out RetryConditionHeaderValue h))
-                    {
-                        delay = h.Delta ?? delay;
-                    }
+                    TimeSpan delay = response.Headers.ReadRetryAfterDelay(defaultRetryAfterMilliseconds: defaultRetryAfterMilliseconds);
                     await Task.Delay(delay);
-
                     return true;
+                }
+                else if(response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    if (throwIfNotFound)
+                    {
+                        throw new Exception($"An item was not found. Status: {response.StatusCode}.");
+                    }
                 }
                 else if (!response.IsSuccessStatusCode)
                 {
@@ -191,6 +305,30 @@ namespace Denomica.Cosmos.Extensions
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Reads the <c>Retry-After</c> header from the given <paramref name="headers"/> and returns that information as
+        /// a <see cref="TimeSpan"/> struct.
+        /// </summary>
+        /// <param name="headers">The headers to read from.</param>
+        /// <param name="defaultRetryAfterMilliseconds">The default delay if no <c>Retry-After</c> header is found.</param>
+        /// <remarks>
+        /// If the current headers do not contain a <c>Retry-After</c> header value, the default <paramref name="defaultRetryAfterMilliseconds"/>
+        /// is used as delay.
+        /// </remarks>
+        private static TimeSpan ReadRetryAfterDelay(this Headers? headers, int defaultRetryAfterMilliseconds = 5000)
+        {
+            TimeSpan delay = TimeSpan.FromMilliseconds(defaultRetryAfterMilliseconds);
+            if(null != headers)
+            {
+                var retryAfter = headers["Retry-After"];
+                if(RetryConditionHeaderValue.TryParse(retryAfter, out var h))
+                {
+                    delay = h.Delta ?? delay;
+                }
+            }
+            return delay;
         }
 
         /// <summary>

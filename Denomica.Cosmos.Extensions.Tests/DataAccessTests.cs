@@ -7,6 +7,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
+using System.Collections.Generic;
+using System;
+using System.Text.Json;
 
 namespace Denomica.Cosmos.Extensions.Tests
 {
@@ -68,19 +71,88 @@ namespace Denomica.Cosmos.Extensions.Tests
         [TestInitialize]
         public async Task TestInit()
         {
-            var items = DataContainer.QueryAsync<ContainerItem>(new QueryDefinition("select c.id,c.partition from c"));
+            var tasks = new List<Task<ResponseMessage>>();
+            var items = DataContainer.QueryDocumentsAsync<ContainerItem>(new QueryDefinition("select c.id,c.partition from c"));
             await foreach(var item in items)
             {
-                await DataContainer.DeleteItemAsync(item.Id, item.Partition);
+                tasks.Add(DataContainer.DeleteDocumentAsync(item.Id, item.Partition));
+            }
+
+            await Task.WhenAll(tasks);
+
+            var errors = from x in tasks where !x.Result.StatusCode.IsSuccess() select x.Result;
+            if(errors.Any())
+            {
+                throw new Exception("Unable to clear all items from container before running unit test.");
             }
         }
 
+
+
         [TestMethod]
-        public void TestMethod1()
+        [Description("Bulk loads the container ensuring that no HTTP 429 is returned.")]
+        public async Task BulkLoad01()
         {
-            
+            int itemCount = 2000;
+            var upsertTasks = new List<Task<ItemResponse<Dictionary<string, object>>>>();
+            for(var i = 0; i < itemCount; i++)
+            {
+                var doc = new Dictionary<string, object>
+                {
+                    { "Id", Guid.NewGuid() },
+                    { "FirstName", $"First Name {i}" },
+                    { "LastName", $"Last name {i}" },
+                    { "EmployeeNumber", i }
+                };
+
+                upsertTasks.Add(DataContainer.UpsertDocumentAsync(doc));
+            }
+
+            await Task.WhenAll(upsertTasks);
+            var errors = from x in upsertTasks where !x.Result.StatusCode.IsSuccess() select x.Result;
+            Assert.AreEqual(0, errors.Count(), "There must be no error responses.");
+
+            var count = await this.GetContainerCountAsync();
+            Assert.AreEqual(itemCount, count);
         }
 
+
+
+        [TestMethod]
+        [Description("Inserts one item and checks the item count.")]
+        public async Task SelectCount01()
+        {
+            var response = await DataContainer.UpsertDocumentAsync(new { Id = Guid.NewGuid() });
+            var query = new QueryDefinition("select count(1) from c");
+            var result = await DataContainer.QueryDocumentsAsync<Dictionary<string, JsonElement>>(query).ToListAsync();
+            Assert.AreEqual(1, result.Count);
+            var count = result.First()["$1"];
+            Assert.AreEqual(1, count.GetInt32());
+        }
+
+
+        [TestMethod]
+        [Description("Upserts a document into the database and expects successful result.")]
+        public async Task Upsert01()
+        {
+            var doc = new Dictionary<string, object>
+            {
+                { "Id", Guid.NewGuid() },
+                { "Partition", Guid.NewGuid() }
+            };
+
+            var response = await DataContainer.UpsertDocumentAsync(doc);
+            Assert.IsTrue(response.StatusCode.IsSuccess());
+        }
+
+
+        private async Task<int> GetContainerCountAsync()
+        {
+            var query = new QueryDefinition("select count(1) from c");
+            var result = await DataContainer.QueryDocumentsAsync<Dictionary<string, JsonElement>>(query).ToListAsync();
+            var count = result.First()["$1"];
+            return count.GetInt32();
+        }
     }
 
     public class ContainerItem
