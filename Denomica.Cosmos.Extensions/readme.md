@@ -11,3 +11,7 @@ A library that facilitates working with data in Azure Cosmos DB using the [.NET 
   - Query
   - Delete
 - Return query results as async enumerable collections
+
+## Further Reading
+
+For more information, check out the [library wiki](https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki) for this library.

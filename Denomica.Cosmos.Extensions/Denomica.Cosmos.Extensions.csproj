@@ -5,13 +5,13 @@
 		<Nullable>enable</Nullable>
 		<Description>Utilities for working with data in Azure Cosmos DB.</Description>
 		<Copyright>Copyright (c) 2022 Denomica Oy</Copyright>
-		<PackageProjectUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions</RepositoryUrl>
 		<PackageReadmeFile>readme.md</PackageReadmeFile>
 		<PackageTags>Azure;Cosmos DB</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<Version>0.2.0-alpha</Version>
+		<Version>0.3.0-preview</Version>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -70,62 +70,63 @@ namespace Denomica.Cosmos.Extensions
         /// Creates a <see cref="PartitionKey"/> object from the given value.
         /// </summary>
         /// <param name="value">The value to create the <see cref="PartitionKey"/> from.</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException">
-        /// The exception that is thrown if <paramref name="value"/> is <c>null</c>.
-        /// </exception>
         /// <exception cref="InvalidCastException">
         /// The exception that is found if <paramref name="value"/> cannot be converted into a 
         /// value that can be used to create a <see cref="PartitionKey"/> object from.
         /// </exception>
-        public PartitionKey CreatePartitionKey(object value)
+        public PartitionKey CreatePartitionKey(object? value)
         {
-            if (null == value) throw new ArgumentNullException(nameof(value));
-
-            PartitionKey key = PartitionKey.None;
-            if(value is string)
+            PartitionKey key = PartitionKey.Null;
+            if(null != value)
             {
-                key = new PartitionKey((string)value);
-            }
-            else if (value is double)
-            {
-                key = new PartitionKey((double)value);
-            }
-            else if (value is bool)
-            {
-                key = new PartitionKey((bool)value);
-            }
-            else if(value is JsonElement)
-            {
-                var elem = (JsonElement)value;
-                switch(elem.ValueKind)
+                if (value is string)
                 {
-                    case JsonValueKind.String:
-                        key = new PartitionKey(elem.GetString());
-                        break;
+                    key = new PartitionKey((string)value);
+                }
+                else if (value is double)
+                {
+                    key = new PartitionKey((double)value);
+                }
+                else if (value is bool)
+                {
+                    key = new PartitionKey((bool)value);
+                }
+                else if (value is JsonElement)
+                {
+                    var elem = (JsonElement)value;
+                    switch (elem.ValueKind)
+                    {
+                        case JsonValueKind.String:
+                            key = new PartitionKey(elem.GetString());
+                            break;
 
-                    case JsonValueKind.Number:
-                        if(elem.TryGetInt64(out var i))
-                        {
-                            key = new PartitionKey(i);
-                        }
-                        else if(elem.TryGetDouble(out var d))
-                        {
-                            key = new PartitionKey(d);
-                        }
-                        else
-                        {
-                            throw new InvalidCastException($"Cannot convert numeric value '{elem.GetRawText()}' to either integer or double.");
-                        }
-                        break;
+                        case JsonValueKind.Number:
+                            if (elem.TryGetInt64(out var i))
+                            {
+                                key = new PartitionKey(i);
+                            }
+                            else if (elem.TryGetDouble(out var d))
+                            {
+                                key = new PartitionKey(d);
+                            }
+                            else
+                            {
+                                throw new InvalidCastException($"Cannot convert numeric value '{elem.GetRawText()}' to either integer or double.");
+                            }
+                            break;
 
-                    case JsonValueKind.True:
-                    case JsonValueKind.False:
-                        key = new PartitionKey(elem.GetBoolean());
-                        break;
+                        case JsonValueKind.True:
+                        case JsonValueKind.False:
+                            key = new PartitionKey(elem.GetBoolean());
+                            break;
 
-                    default:
-                        throw new InvalidCastException($"Cannot convert JsonElement whose value type is '{elem.ValueKind}' to a PartitionKey.");
+                        case JsonValueKind.Null:
+                            key = PartitionKey.Null;
+                            break;
+
+                        default:
+                            throw new InvalidCastException($"Cannot convert JsonElement whose value type is '{elem.ValueKind}' to a PartitionKey.");
+                    }
                 }
             }
 
@@ -207,6 +208,70 @@ namespace Denomica.Cosmos.Extensions
         }
 
         /// <summary>
+        /// Returns a queryable object that can be used to query items with using the methods
+        /// exposed on the <see cref="ContainerProxy"/> class.
+        /// </summary>
+        /// <typeparam name="TItem">The type of items in the resulting collection.</typeparam>
+        public IOrderedQueryable<TItem> GetItemLinqQueryable<TItem>()
+        {
+            return this.Container.GetItemLinqQueryable<TItem>();
+        }
+
+        /// <summary>
+        /// Returns the first item matching the <paramref name="query"/> or <c>null</c> if no item is found.
+        /// </summary>
+        /// <param name="query">The query to use to find one item with.</param>
+        public async Task<JsonElement?> FirstOrDefaultAsync(QueryDefinition query)
+        {
+            JsonElement? result = null;
+            var items = this.QueryItemsAsync(query);
+            await foreach(var item in items)
+            {
+                result = item;
+                break;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the first item matching the specified <paramref name="query"/>, or the default value for <typeparamref name="TItem"/> if no item matching the query is found.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the item as.</typeparam>
+        /// <param name="query">The query to use to find one item with.</param>
+        public async Task<TItem> FirstOrDefaultAsync<TItem>(QueryDefinition query)
+        {
+            TItem result = default!;
+            var items = this.QueryItemsAsync<TItem>(query);
+            await foreach(var item in items)
+            {
+                result = item;
+                break;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the first item matching the given <paramref name="linqQuery"/>.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the item as.</typeparam>
+        /// <param name="linqQuery">The query to use to find one item with.</param>
+        public async Task<TItem> FirstOrDefaultAsync<TItem>(IQueryable<TItem> linqQuery)
+        {
+            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition());
+        }
+
+        /// <summary>
+        /// Returns the first item matching the given <paramref name="linqQuery"/>.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the item as.</typeparam>
+        /// <param name="linqQuery">The query to use to find one item with.</param>
+        public async Task<TItem> FirstOrDefaultAsync<TItem>(IOrderedQueryable<TItem> linqQuery)
+        {
+            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition());
+        }
+
+        /// <summary>
         /// Queries the underlying <see cref="Container"/> for items.
         /// </summary>
         /// <param name="query">The query to execute.</param>
@@ -271,6 +336,26 @@ namespace Denomica.Cosmos.Extensions
                 }
             }
 
+        }
+
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and return the results as an async enumerable collection.
+        /// </summary>
+        /// <typeparam name="TItem">The type for the items to return.</typeparam>
+        /// <param name="query">The query to execute.</param>
+        public IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(IOrderedQueryable<TItem> query)
+        {
+            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition());
+        }
+
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and return the results as an async enumerable collection.
+        /// </summary>
+        /// <typeparam name="TItem">The type for the items to return.</typeparam>
+        /// <param name="query">The query to execute.</param>
+        public IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(IQueryable<TItem> query)
+        {
+            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition());
         }
 
         /// <summary>

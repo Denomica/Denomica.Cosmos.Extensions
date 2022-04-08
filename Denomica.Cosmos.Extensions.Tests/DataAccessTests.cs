@@ -76,10 +76,17 @@ namespace Denomica.Cosmos.Extensions.Tests
         public async Task ClearContainer()
         {
             var tasks = new List<Task<ResponseMessage>>();
-            var items = Proxy.QueryItemsAsync<ContainerItem>(new QueryDefinition("select c.id,c.partition from c"));
+            var items = Proxy.QueryItemsAsync(new QueryDefinition("select c.id,c.partition from c"));
             await foreach(var item in items)
             {
-                tasks.Add(Proxy.DeleteItemAsync(item.Id, Proxy.CreatePartitionKey(item.Partition)));
+                PartitionKey partition = PartitionKey.None;
+                var idProperty = item.GetProperty("id");
+                var id = idProperty.GetString() ?? throw new NullReferenceException();
+                if(item.TryGetProperty("partition", out var p))
+                {
+                    partition = Proxy.CreatePartitionKey(p);
+                }
+                tasks.Add(Proxy.DeleteItemAsync(id, partition));
             }
 
             await Task.WhenAll(tasks);
@@ -204,7 +211,56 @@ namespace Denomica.Cosmos.Extensions.Tests
             }
         }
 
+        [TestMethod]
+        [Description("Creates a few items and queries data using Linq expressions.")]
+        public async Task Query03()
+        {
+            var ids = new string[] {"1", "2", "3"};
 
+            int i = 0;
+            foreach(var id in ids)
+            {
+                await Proxy.UpsertItemAsync(new Item1 { Id = id, Index = i, Partition = "p" });
+                i++;
+            }
+
+            var item1 = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Partition == "p"));
+            Assert.IsNotNull(item1);
+
+            var item2 = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().OrderByDescending(x => x.Index));
+            Assert.IsNotNull(item2);
+            Assert.AreEqual(ids.Last(), item2.Id);
+        }
+
+        [TestMethod]
+        [Description("Creates a lot of items, queries for them in a specific order and ensures that they are returned in the right order.")]
+        public async Task Query04()
+        {
+            int count = 1000;
+            var items = new List<Item1>();
+
+            var upsertTasks = new List<Task>();
+            for(var i = 0; i < count; i++)
+            {
+                var item = new Item1 { Id = Guid.NewGuid().ToString(), Index = i };
+                items.Add(item);
+                upsertTasks.Add(Proxy.UpsertItemAsync(item));
+            }
+
+            await Task.WhenAll(upsertTasks);
+            Assert.AreEqual(count, items.Count);
+
+            var query = from x in Proxy.GetItemLinqQueryable<Item1>() orderby x.Index select x;
+            await foreach(var item in Proxy.QueryItemsAsync(query))
+            {
+                var firstItem = items.First();
+                items.RemoveAt(0);
+
+                Assert.AreEqual(firstItem.Id, item.Id);
+            }
+
+            Assert.AreEqual(0, items.Count);
+        }
 
         [TestMethod]
         [Description("Inserts one item and checks the item count.")]
