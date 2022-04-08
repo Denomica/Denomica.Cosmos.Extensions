@@ -104,7 +104,7 @@ namespace Denomica.Cosmos.Extensions.Tests
         [Description("Bulk loads the container ensuring that no HTTP 429 is returned.")]
         public async Task BulkLoad01()
         {
-            int itemCount = 2000;
+            int itemCount = 5000;
             var upsertTasks = new List<Task<ItemResponse<Dictionary<string, object>>>>();
             for(var i = 0; i < itemCount; i++)
             {
@@ -120,7 +120,7 @@ namespace Denomica.Cosmos.Extensions.Tests
             }
 
             await Task.WhenAll(upsertTasks);
-            var errors = from x in upsertTasks where !x.Result.StatusCode.IsSuccess() select x.Result;
+            var errors = from x in upsertTasks where !x.IsFaulted && !x.Result.StatusCode.IsSuccess() select x.Result;
             Assert.AreEqual(0, errors.Count(), "There must be no error responses.");
 
             var count = await this.GetContainerCountAsync();

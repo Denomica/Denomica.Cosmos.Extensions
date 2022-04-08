@@ -40,8 +40,11 @@ namespace Denomica.Cosmos.Extensions
         /// The default number of milliseconds to wait before retrying an operation that produced a response with 
         /// HTTP 429 status. This value is only used if no other information is available with the HTTP 429 response.
         /// </param>
+        /// <param name="maxRetryCount">
+        /// The maximum number of retries allowed when retrying HTTP 429 responses.
+        /// </param>
         /// <exception cref="ArgumentNullException">The exception that is thrown if <paramref name="container"/> is <c>null</c>.</exception>
-        public ContainerProxy(Container container, JsonSerializerOptions? serializationOptions = null, int defaultRetryAfterMilliseconds = 5000)
+        public ContainerProxy(Container container, JsonSerializerOptions? serializationOptions = null, int defaultRetryAfterMilliseconds = 5000, int? maxRetryCount = null)
         {
             this.Container = container ?? throw new ArgumentNullException(nameof(container));
             this.SerializationOptions = serializationOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
@@ -64,6 +67,11 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         public int DefaultRetryAfterMilliseconds { get; private set; }
 
+        /// <summary>
+        /// The maximum number of retries allowed when retrying requests that produce HTTP 429 responses.
+        /// </summary>
+        /// <remarks>If set to <c>null</c>, no maximum retry count is applied.</remarks>
+        public int? MaxRetryCount { get; set; }
 
 
         /// <summary>
@@ -518,7 +526,7 @@ namespace Denomica.Cosmos.Extensions
             {
                 if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    TimeSpan delay = this.ReadRetryAfterDelay(response.Headers);
+                    var delay = this.ReadRetryAfterDelay(response.Headers);
                     await this.WaitAsync(delay, retryCount);
                     return true;
                 }
@@ -549,7 +557,7 @@ namespace Denomica.Cosmos.Extensions
             {
                 if (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    await this.WaitAsync(ex.RetryAfter ?? TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds), retryCount);
+                    await this.WaitAsync(ex.RetryAfter, retryCount);
                     return true;
                 }
                 else if (ex.StatusCode == HttpStatusCode.NotFound)
@@ -578,9 +586,9 @@ namespace Denomica.Cosmos.Extensions
         /// If the current headers do not contain a <c>Retry-After</c> header value, the default <paramref name="defaultRetryAfterMilliseconds"/>
         /// is used as delay.
         /// </remarks>
-        private TimeSpan ReadRetryAfterDelay(Headers? headers)
+        private TimeSpan? ReadRetryAfterDelay(Headers? headers)
         {
-            TimeSpan delay = TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds);
+            TimeSpan? delay = null;
             if (null != headers)
             {
                 var retryAfter = headers["Retry-After"];
@@ -597,15 +605,15 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <param name="delay">The delay to wait before the method returns.</param>
         /// <param name="retryCount">The number of times an operation has been retried.</param>
-        private Task WaitAsync(TimeSpan delay, int retryCount)
+        private Task WaitAsync(TimeSpan? delay, int retryCount)
         {
-            // If we start to get a lot of retries and the retry count increases,
-            // it probably means that we are at least temporarily overloading the server
-            // quite heavily. The more retry counts we get, the more we will increase
-            // the delay from the given time span.
-            double factor = 1 + (.2 * retryCount);
-            var newDelay = delay * factor;
-            return Task.Delay(newDelay);
+            if(this.MaxRetryCount.HasValue && retryCount > this.MaxRetryCount)
+            {
+                throw new Exception($"The configured maximum retry count of {this.MaxRetryCount} has been exceeded.");
+            }
+
+            var actualDelay = delay ?? TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds);
+            return Task.Delay(actualDelay);
         }
 
     }
