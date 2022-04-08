@@ -130,6 +130,27 @@ namespace Denomica.Cosmos.Extensions.Tests
 
 
         [TestMethod]
+        [Description("Stores a few items and attempts to get the first item matching a query and specifies a derived type to return the result as.")]
+        public async Task GetFirstOrDefault01()
+        {
+            var itm1 = new ChildItem1 { DisplayName = "Child #1" };
+            var itm2 = new ChildItem1 { DisplayName = "Child #2" };
+
+            await Proxy.UpsertItemAsync(itm1);
+            await Proxy.UpsertItemAsync(itm2);
+
+            var itm1b = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Id == itm1.Id), typeof(ChildItem1)) as ChildItem1;
+            var itm2b = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Id == itm2.Id), typeof(ChildItem1)) as ChildItem1;
+
+            Assert.IsNotNull(itm1b);
+            Assert.IsNotNull(itm2b);
+
+            Assert.AreEqual(itm1.DisplayName, itm1b.DisplayName);
+            Assert.AreEqual(itm2.DisplayName, itm2b.DisplayName);
+        }
+
+
+        [TestMethod]
         [Description("Stores items in the database and queries for them using a QueryDefinition object.")]
         public async Task Query01()
         {
@@ -262,6 +283,8 @@ namespace Denomica.Cosmos.Extensions.Tests
             Assert.AreEqual(0, items.Count);
         }
 
+
+
         [TestMethod]
         [Description("Inserts one item and checks the item count.")]
         public async Task SelectCount01()
@@ -308,11 +331,15 @@ namespace Denomica.Cosmos.Extensions.Tests
 
     public class Item1
     {
-        public string Id { get; set; } = null!;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public string Partition { get; set; } = null!;
 
         public int Index { get; set; }
     }
 
+    public class ChildItem1 : Item1
+    {
+        public string? DisplayName { get; set; }
+    }
 }

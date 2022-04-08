@@ -238,10 +238,16 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <typeparam name="TItem">The type to return the item as.</typeparam>
         /// <param name="query">The query to use to find one item with.</param>
-        public async Task<TItem> FirstOrDefaultAsync<TItem>(QueryDefinition query)
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public async Task<TItem> FirstOrDefaultAsync<TItem>(QueryDefinition query, Type? returnAs = null)
         {
             TItem result = default!;
-            var items = this.QueryItemsAsync<TItem>(query);
+            var items = this.QueryItemsAsync<TItem>(query, returnAs: returnAs);
             await foreach(var item in items)
             {
                 result = item;
@@ -256,9 +262,15 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <typeparam name="TItem">The type to return the item as.</typeparam>
         /// <param name="linqQuery">The query to use to find one item with.</param>
-        public async Task<TItem> FirstOrDefaultAsync<TItem>(IQueryable<TItem> linqQuery)
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public async Task<TItem> FirstOrDefaultAsync<TItem>(IQueryable<TItem> linqQuery, Type? returnAs = null)
         {
-            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition());
+            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
         }
 
         /// <summary>
@@ -266,9 +278,15 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <typeparam name="TItem">The type to return the item as.</typeparam>
         /// <param name="linqQuery">The query to use to find one item with.</param>
-        public async Task<TItem> FirstOrDefaultAsync<TItem>(IOrderedQueryable<TItem> linqQuery)
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public async Task<TItem> FirstOrDefaultAsync<TItem>(IOrderedQueryable<TItem> linqQuery, Type? returnAs = null)
         {
-            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition());
+            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
         }
 
         /// <summary>
@@ -314,7 +332,13 @@ namespace Denomica.Cosmos.Extensions
         /// Queries the underlying <see cref="Container"/> for items.
         /// </summary>
         /// <typeparam name="TItem">The type to return the items as.</typeparam>
-        /// <param name="query"></param>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
         /// <remarks>
         /// <para>
         /// You can use the <see cref="QueryDefinitionBuilder"/> helper to build the <paramref name="query"/>.
@@ -325,11 +349,19 @@ namespace Denomica.Cosmos.Extensions
         /// </para>
         /// </remarks>
         /// <returns>Returns the results as an async enumerable collection.</returns>
-        public async IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(QueryDefinition query)
+        public async IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(QueryDefinition query, Type? returnAs = null)
         {
             await foreach (var item in this.QueryItemsAsync(query))
             {
-                var resultItem = JsonSerializer.Deserialize<TItem>(item, options: this.SerializationOptions);
+                TItem resultItem = default!;
+                if(null == returnAs)
+                {
+                    resultItem = JsonSerializer.Deserialize<TItem>(item, options: this.SerializationOptions);
+                }
+                else
+                {
+                    resultItem = (TItem)JsonSerializer.Deserialize(item, returnAs, options: this.SerializationOptions);
+                }
                 if (null != resultItem)
                 {
                     yield return resultItem;
@@ -343,9 +375,15 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <typeparam name="TItem">The type for the items to return.</typeparam>
         /// <param name="query">The query to execute.</param>
-        public IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(IOrderedQueryable<TItem> query)
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(IOrderedQueryable<TItem> query, Type? returnAs = null)
         {
-            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition());
+            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition(), returnAs: returnAs);
         }
 
         /// <summary>
@@ -353,9 +391,15 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <typeparam name="TItem">The type for the items to return.</typeparam>
         /// <param name="query">The query to execute.</param>
-        public IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(IQueryable<TItem> query)
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public IAsyncEnumerable<TItem> QueryItemsAsync<TItem>(IQueryable<TItem> query, Type? returnAs = null)
         {
-            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition());
+            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition(), returnAs: returnAs);
         }
 
         /// <summary>
