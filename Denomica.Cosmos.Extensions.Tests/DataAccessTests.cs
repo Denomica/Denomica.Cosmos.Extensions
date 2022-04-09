@@ -192,7 +192,7 @@ namespace Denomica.Cosmos.Extensions.Tests
                     .AppendQueryText(" where")
 
                     .AppendQueryText(" c[\"partition\"] = @partition")
-                    .AddParameter("@partition", p)
+                    .WithParameter("@partition", p)
 
                     .AppendQueryText(" order by c[\"value\"] desc")
                     .Build();

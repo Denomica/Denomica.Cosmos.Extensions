@@ -47,7 +47,7 @@ namespace Denomica.Cosmos.Extensions
         /// The maximum number of retries allowed when retrying HTTP 429 responses.
         /// </param>
         /// <exception cref="ArgumentNullException">The exception that is thrown if <paramref name="container"/> is <c>null</c>.</exception>
-        public ContainerProxy(Container container, JsonSerializerOptions? serializationOptions = null, int defaultRetryAfterMilliseconds = 5000, int? maxRetryCount = null)
+        public ContainerProxy(Container container, JsonSerializerOptions? serializationOptions = null, int defaultRetryAfterMilliseconds = 5000)
         {
             this.Container = container ?? throw new ArgumentNullException(nameof(container));
             this.SerializationOptions = serializationOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
@@ -70,11 +70,6 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         public int DefaultRetryAfterMilliseconds { get; private set; }
 
-        /// <summary>
-        /// The maximum number of retries allowed when retrying requests that produce HTTP 429 responses.
-        /// </summary>
-        /// <remarks>If set to <c>null</c>, no maximum retry count is applied.</remarks>
-        public int? MaxRetryCount { get; set; }
 
 
         /// <summary>
@@ -664,11 +659,6 @@ namespace Denomica.Cosmos.Extensions
         /// <param name="retryCount">The number of times an operation has been retried.</param>
         private Task WaitAsync(TimeSpan? delay, int retryCount)
         {
-            if(this.MaxRetryCount.HasValue && retryCount > this.MaxRetryCount)
-            {
-                throw new Exception($"The configured maximum retry count of {this.MaxRetryCount} has been exceeded.");
-            }
-
             var actualDelay = delay ?? TimeSpan.FromMilliseconds(this.DefaultRetryAfterMilliseconds);
             return Task.Delay(actualDelay);
         }

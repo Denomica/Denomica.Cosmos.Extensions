@@ -37,7 +37,7 @@ namespace Denomica.Cosmos.Extensions
         }
 
         private List<KeyValuePair<string, object>> Parameters = new List<KeyValuePair<string, object>>();
-        public QueryDefinitionBuilder AddParameter(string name, object value)
+        public QueryDefinitionBuilder WithParameter(string name, object value)
         {
             this.Parameters.Add(new KeyValuePair<string, object>(name, value));
             return this;
