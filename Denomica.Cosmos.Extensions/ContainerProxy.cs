@@ -9,9 +9,12 @@ using System.Net.Http.Headers;
 using System.Linq.Expressions;
 using System.Linq;
 using Microsoft.Azure.Cosmos.Linq;
+using System.IO;
+using Denomica.Text.Json;
 
 namespace Denomica.Cosmos.Extensions
 {
+
     /// <summary>
     /// A wrapper class for working with data stored in a Cosmos DB <see cref="Container"/>.
     /// </summary>
@@ -91,13 +94,25 @@ namespace Denomica.Cosmos.Extensions
                 {
                     key = new PartitionKey((string)value);
                 }
+                else if(value is Guid)
+                {
+                    key = new PartitionKey($"{value}");
+                }
                 else if (value is double)
                 {
                     key = new PartitionKey((double)value);
                 }
+                else if(double.TryParse($"{value}", out double d))
+                {
+                    key = new PartitionKey(d);
+                }
                 else if (value is bool)
                 {
                     key = new PartitionKey((bool)value);
+                }
+                else if(bool.TryParse($"{value}", out bool b))
+                {
+                    key = new PartitionKey(b);
                 }
                 else if (value is JsonElement)
                 {
@@ -113,9 +128,9 @@ namespace Denomica.Cosmos.Extensions
                             {
                                 key = new PartitionKey(i);
                             }
-                            else if (elem.TryGetDouble(out var d))
+                            else if (elem.TryGetDouble(out var dd))
                             {
-                                key = new PartitionKey(d);
+                                key = new PartitionKey(dd);
                             }
                             else
                             {
@@ -150,7 +165,7 @@ namespace Denomica.Cosmos.Extensions
         /// Specifies whether to throw an exception if the specified document is not
         /// found. Defaults to <c>true</c>.
         /// </param>
-        public async Task<ResponseMessage> DeleteItemAsync(string id, PartitionKey partition, bool throwIfNotfound = true)
+        public async Task DeleteItemAsync(string id, PartitionKey partition, bool throwIfNotfound = true)
         {
             bool retry = false;
             int retryCount = 0;
@@ -170,7 +185,14 @@ namespace Denomica.Cosmos.Extensions
                 retryCount++;
             } while (retry);
 
-            return response;
+            if(null != response)
+            {
+                response.EnsureSuccessStatusCode();
+            }
+            else
+            {
+                throw new Exception("Unable to get a response for the delete operation.");
+            }
         }
 
         /// <summary>
@@ -181,7 +203,7 @@ namespace Denomica.Cosmos.Extensions
         /// <param name="throwIfNotfound">
         /// Specifies whether to throw an exception if the specified document is not found. Defaults to <c>true</c>.
         /// </param>
-        public Task<ResponseMessage> DeleteItemAsync(string id, string? partition, bool throwIfNotfound = true)
+        public Task DeleteItemAsync(string id, string? partition, bool throwIfNotfound = true)
         {
             return this.DeleteItemAsync(id, partition?.Length > 0 ? new PartitionKey(partition) : PartitionKey.None, throwIfNotfound: throwIfNotfound);
         }
@@ -195,24 +217,9 @@ namespace Denomica.Cosmos.Extensions
         /// Specifies whether to throw an exception if the specified document is not
         /// found. Defaults to <c>true</c>.
         /// </param>
-        public Task<ResponseMessage> DeleteItemAsync(string id, double? partition, bool throwIfNotFound = true)
+        public Task DeleteItemAsync(string id, double? partition, bool throwIfNotFound = true)
         {
             return this.DeleteItemAsync(id, partition.HasValue ? new PartitionKey(partition.Value) : PartitionKey.None, throwIfNotfound: throwIfNotFound);
-        }
-
-        /// <summary>
-        /// Deletes the item with the given <paramref name="id"/> and <paramref name="partition"/>.
-        /// </summary>
-        /// <param name="id">The ID of the item to delete.</param>
-        /// <param name="partition">The partition key of the item to delete. Set to <c>null</c> if the item is stored without a partition.</param>
-        /// <param name="throwIfNotfound">
-        /// Specifies whether to throw an exception if the specified document is not
-        /// found. Defaults to <c>true</c>.
-        /// </param>
-        public async Task<ResponseMessage> DeleteItemAsync(string id, object? partition, bool throwIfNotFound = true)
-        {
-            var partitionKey = null != partition ? this.CreatePartitionKey(partition) : PartitionKey.None;
-            return await this.DeleteItemAsync(id, partitionKey, throwIfNotFound: throwIfNotFound);
         }
 
         /// <summary>
@@ -308,7 +315,7 @@ namespace Denomica.Cosmos.Extensions
 
             do
             {
-                var response = await this.GetResponseAsync(async () =>
+                ResponseMessage response = await this.GetResponseAsync(async () =>
                 {
                     var iterator = this.Container.GetItemQueryStreamIterator(query, continuationToken: continuationToken);
                     if (iterator.HasMoreResults)
@@ -415,7 +422,7 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <param name="item">The item to upsert.</param>
         /// <param name="partitionKey">Optional partition key to use when storing the item in the underlying <see cref="Container"/>.</param>
-        public async Task<ItemResponse<object>> UpsertItemAsync(object item, PartitionKey? partitionKey = null)
+        public async Task<object> UpsertItemAsync(object item, PartitionKey? partitionKey = null)
         {
             return await this.UpsertItemAsync<object>(item, partitionKey: partitionKey);
         }
@@ -426,16 +433,21 @@ namespace Denomica.Cosmos.Extensions
         /// <typeparam name="TItem">The type of the item.</typeparam>
         /// <param name="item">The item to upsert.</param>
         /// <param name="partitionKey">Optional partition key to use when storing the item in the underlying <see cref="Container"/>.</param>
-        public async Task<ItemResponse<TItem>> UpsertItemAsync<TItem>(TItem item, PartitionKey? partitionKey = null)
+        public async Task<TItem> UpsertItemAsync<TItem>(TItem item, PartitionKey? partitionKey = null)
         {
+
+            if(null == item) throw new ArgumentNullException(nameof(item));
+
             bool retry = false;
-            ItemResponse<TItem> response = null!;
+            ItemResponse<object> response = null!;
             int retryCount = 0;
+            TItem upserted = default!;
+
             do
             {
                 try
                 {
-                    response = await this.Container.UpsertItemAsync(item, partitionKey);
+                    response = await this.Container.UpsertItemAsync<object>(item, partitionKey);
                     retry = await this.HandleResponseAsync(response, retryCount);
                 }
                 catch (CosmosException ex)
@@ -446,7 +458,52 @@ namespace Denomica.Cosmos.Extensions
                 retryCount++;
             } while (retry);
 
-            return response;
+            if(null != response)
+            {
+                if(response.StatusCode.IsSuccess())
+                {
+                    /*
+                     * The response must be handled this way to ensure that we return the response as the 
+                     * same type as the item parameter is.
+                     * 
+                     * Note that the type of item can also be a type derifed from TItem. If we would use
+                     * the standard functionality provided by the Cosmos DB SDK, the response from the
+                     * server would be typed as TItem, not as a derived type.
+                     * 
+                     * That's why we upsert the item as an object in the UpsertItemAsync method call above,
+                     * and then serialize the response, and deserialize to the type of the item parameter.
+                     */
+                    object resource = response.Resource is Newtonsoft.Json.Linq.JToken
+                        ? ((Newtonsoft.Json.Linq.JToken)response.Resource).ToJsonDictionary()
+                        : response.Resource;
+
+                    using (var strm = new MemoryStream())
+                    {
+                        await JsonSerializer.SerializeAsync(strm, resource, options: this.SerializationOptions);
+                        strm.Position = 0;
+
+                        try
+                        {
+                            upserted = (TItem)await JsonSerializer.DeserializeAsync(strm, item.GetType(), options: this.SerializationOptions);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new Exception($"Unable to deserialize the upserted item to type '{typeof(TItem).FullName}'.", ex);
+                        }
+                    }
+
+                }
+                else
+                {
+                    throw new Exception($"Unexpected status code received from server. Status code: {response.StatusCode}.");
+                }
+            }
+            else
+            {
+                throw new Exception("Unable to get a response from the server.");
+            }
+
+            return upserted!;
         }
 
 

@@ -75,7 +75,7 @@ namespace Denomica.Cosmos.Extensions.Tests
         [TestCleanup]
         public async Task ClearContainer()
         {
-            var tasks = new List<Task<ResponseMessage>>();
+            var tasks = new List<Task>();
             var items = Proxy.QueryItemsAsync(new QueryDefinition("select c.id,c.partition from c"));
             await foreach(var item in items)
             {
@@ -91,7 +91,7 @@ namespace Denomica.Cosmos.Extensions.Tests
 
             await Task.WhenAll(tasks);
 
-            var errors = from x in tasks where !x.Result.StatusCode.IsSuccess() select x.Result;
+            var errors = from x in tasks where !x.IsCompletedSuccessfully select x;
             if(errors.Any())
             {
                 throw new Exception("Unable to clear all items from container.");
@@ -105,7 +105,7 @@ namespace Denomica.Cosmos.Extensions.Tests
         public async Task BulkLoad01()
         {
             int itemCount = 5000;
-            var upsertTasks = new List<Task<ItemResponse<Dictionary<string, object>>>>();
+            var upsertTasks = new List<Task<Dictionary<string, object>>>();
             for(var i = 0; i < itemCount; i++)
             {
                 var doc = new Dictionary<string, object>
@@ -120,11 +120,28 @@ namespace Denomica.Cosmos.Extensions.Tests
             }
 
             await Task.WhenAll(upsertTasks);
-            var errors = from x in upsertTasks where !x.IsFaulted && !x.Result.StatusCode.IsSuccess() select x.Result;
+            var errors = from x in upsertTasks where !x.IsCompletedSuccessfully select x.Result;
             Assert.AreEqual(0, errors.Count(), "There must be no error responses.");
 
             var count = await this.GetContainerCountAsync();
             Assert.AreEqual(itemCount, count);
+        }
+
+
+
+        [TestMethod]
+        [Description("Deletes an item from the container.")]
+        public async Task Delete01()
+        {
+            object partition = Guid.NewGuid();
+
+            var item = new Item1 { Partition = $"{partition}" };
+            var upserted = await Proxy.UpsertItemAsync(item);
+
+            await Proxy.DeleteItemAsync(item.Id, $"{partition}");
+
+            var count = await this.GetContainerCountAsync();
+            Assert.AreEqual(0, count, "All items must have been deleted from the container.");
         }
 
 
@@ -309,8 +326,23 @@ namespace Denomica.Cosmos.Extensions.Tests
             };
 
             var response = await Proxy.UpsertItemAsync(doc);
-            Assert.IsTrue(response.StatusCode.IsSuccess());
+            Assert.IsNotNull(response);
         }
+
+        [TestMethod]
+        [Description("Upserts an item typed as a parent type, but assumes that it will be returned as the actual type.")]
+        public async Task Upsert02()
+        {
+            var displayName = "Child Item";
+            Item1 item = new ChildItem1 { DisplayName = displayName, Partition = Guid.NewGuid().ToString() };
+            Item1 upserted = await Proxy.UpsertItemAsync(item);
+            Assert.IsNotNull(upserted);
+            Assert.IsTrue(upserted is ChildItem1);
+            var item2 = upserted as ChildItem1;
+            Assert.IsNotNull(item2);
+            Assert.AreEqual(displayName, item2.DisplayName);
+        }
+
 
 
         private async Task<int> GetContainerCountAsync()
