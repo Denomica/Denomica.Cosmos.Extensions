@@ -228,78 +228,6 @@ namespace Denomica.Cosmos.Extensions
         }
 
         /// <summary>
-        /// Returns the first item matching the <paramref name="query"/> or <c>null</c> if no item is found.
-        /// </summary>
-        /// <param name="query">The query to use to find one item with.</param>
-        public async Task<JsonElement?> QuerySingleItemAsync(QueryDefinition query)
-        {
-            JsonElement? result = null;
-            var items = this.QueryItemsAsync(query);
-            await foreach(var item in items)
-            {
-                result = item;
-                break;
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// Returns the first item matching the specified <paramref name="query"/>, or the default value for <typeparamref name="TItem"/> if no item matching the query is found.
-        /// </summary>
-        /// <typeparam name="TItem">The type to return the item as.</typeparam>
-        /// <param name="query">The query to use to find one item with.</param>
-        /// <param name="returnAs">
-        /// An optional type that items returned will be converted to. Note that this type 
-        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
-        /// parameter is not specified, the items are returned as the type specified
-        /// in <typeparamref name="TItem"/>.
-        /// </param>
-        public async Task<TItem> QuerySingleItemAsync<TItem>(QueryDefinition query, Type? returnAs = null)
-        {
-            TItem result = default!;
-            var items = this.QueryItemsAsync<TItem>(query, returnAs: returnAs);
-            await foreach(var item in items)
-            {
-                result = item;
-                break;
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Returns the first item matching the given <paramref name="linqQuery"/>.
-        /// </summary>
-        /// <typeparam name="TItem">The type to return the item as.</typeparam>
-        /// <param name="linqQuery">The query to use to find one item with.</param>
-        /// <param name="returnAs">
-        /// An optional type that items returned will be converted to. Note that this type 
-        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
-        /// parameter is not specified, the items are returned as the type specified
-        /// in <typeparamref name="TItem"/>.
-        /// </param>
-        public async Task<TItem> QuerySingleItemAsync<TItem>(IQueryable<TItem> linqQuery, Type? returnAs = null)
-        {
-            return await this.QuerySingleItemAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
-        }
-
-        /// <summary>
-        /// Returns the first item matching the given <paramref name="linqQuery"/>.
-        /// </summary>
-        /// <typeparam name="TItem">The type to return the item as.</typeparam>
-        /// <param name="linqQuery">The query to use to find one item with.</param>
-        /// <param name="returnAs">
-        /// An optional type that items returned will be converted to. Note that this type 
-        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
-        /// parameter is not specified, the items are returned as the type specified
-        /// in <typeparamref name="TItem"/>.
-        /// </param>
-        public async Task<TItem> QuerySingleItemAsync<TItem>(IOrderedQueryable<TItem> linqQuery, Type? returnAs = null)
-        {
-            return await this.QuerySingleItemAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
-        }
-
-        /// <summary>
         /// Queries the underlying <see cref="Container"/> for items.
         /// </summary>
         /// <param name="query">The query to execute.</param>
@@ -492,6 +420,79 @@ namespace Denomica.Cosmos.Extensions
         {
             return this.QueryItemsAsync<TItem>(query.ToQueryDefinition(), options, returnAs: returnAs);
         }
+
+        /// <summary>
+        /// Returns the first item matching the <paramref name="query"/> or <c>null</c> if no item is found.
+        /// </summary>
+        /// <param name="query">The query to use to find one item with.</param>
+        public async Task<JsonElement?> QuerySingleItemAsync(QueryDefinition query)
+        {
+            JsonElement? result = null;
+            var items = this.QueryItemsAsync(query);
+            await foreach (var item in items)
+            {
+                result = item;
+                break;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the first item matching the specified <paramref name="query"/>, or the default value for <typeparamref name="TItem"/> if no item matching the query is found.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the item as.</typeparam>
+        /// <param name="query">The query to use to find one item with.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public async Task<TItem> QuerySingleItemAsync<TItem>(QueryDefinition query, Type? returnAs = null)
+        {
+            TItem result = default!;
+            var items = this.QueryItemsAsync<TItem>(query, returnAs: returnAs);
+            await foreach (var item in items)
+            {
+                result = item;
+                break;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the first item matching the given <paramref name="linqQuery"/>.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the item as.</typeparam>
+        /// <param name="linqQuery">The query to use to find one item with.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public async Task<TItem> QuerySingleItemAsync<TItem>(IQueryable<TItem> linqQuery, Type? returnAs = null)
+        {
+            return await this.QuerySingleItemAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
+        }
+
+        /// <summary>
+        /// Returns the first item matching the given <paramref name="linqQuery"/>.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the item as.</typeparam>
+        /// <param name="linqQuery">The query to use to find one item with.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        public async Task<TItem> QuerySingleItemAsync<TItem>(IOrderedQueryable<TItem> linqQuery, Type? returnAs = null)
+        {
+            return await this.QuerySingleItemAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
+        }
+
 
 
 
