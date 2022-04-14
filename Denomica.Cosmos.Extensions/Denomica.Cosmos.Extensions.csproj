@@ -11,7 +11,7 @@
 		<PackageTags>Azure;Cosmos DB</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-		<Version>0.9.0-rc</Version>
+		<Version>1.0.0-rc-01</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
