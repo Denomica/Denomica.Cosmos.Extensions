@@ -300,6 +300,81 @@ namespace Denomica.Cosmos.Extensions.Tests
             Assert.AreEqual(0, items.Count);
         }
 
+        [TestMethod]
+        [Description("Create a set of items in the database and use the query method that supports paging with continuation tokens.")]
+        public async Task Query05()
+        {
+            var itemCount = 1000;
+            int pageItemCount = 20; // Must produce the same number of items on each page.
+            var source = new List<ChildItem1>();
+            for(var i = 0; i < itemCount; i++)
+            {
+                var item = new ChildItem1 { Index = i, DisplayName = $"Item #{i}", Partition = Guid.NewGuid().ToString() };
+                source.Add(item);
+                await Proxy.UpsertItemAsync(item);
+            }
+
+            var results = new List<ChildItem1>();
+            string? continuationToken = null;
+            var query = new QueryDefinition("select * from c order by c.id");
+            do
+            {
+                var result = await Proxy.QueryItemsAsync<ChildItem1>(query, new QueryOptions { ContinuationToken = continuationToken, MaxItemCount = pageItemCount });
+                continuationToken = result.ContinuationToken;
+
+                Assert.AreEqual(pageItemCount, result.Items.Count());
+                results.AddRange(result.Items);
+            } while (continuationToken?.Length > 0);
+
+            CollectionAssert.AreEqual(source.OrderBy(x => x.Id).ToList(), results);
+        }
+
+        [TestMethod]
+        [Description("Creates a set of items and queries for the results using the generic query method.")]
+        public async Task Query06()
+        {
+            var itemCount = 100;
+            var pageItemCount = 10;
+            var source = new List<Item1>();
+
+            for(var i = 0; i < itemCount; i++)
+            {
+                var item = new Item1 { Index = i };
+                source.Add(await Proxy.UpsertItemAsync(item));
+            }
+
+            source = source.OrderBy(x => x.Id).ToList();
+            var results = new List<Item1>();
+            var query = from x in Proxy.GetItemLinqQueryable<Item1>() orderby x.Id select x;
+
+            QueryResult<Item1>? result = await Proxy.QueryItemsAsync(query, new QueryOptions { MaxItemCount = pageItemCount });
+            while(result?.Items?.Count() > 0)
+            {
+                Assert.AreEqual(result.Items.Count(), pageItemCount);
+                Assert.IsFalse(result.Items.Any(x => results.Any(y => y.Id == x.Id)), "Results must not include previously returned results.");
+                results.AddRange(result.Items);
+                result = await result.GetNextResultAsync();
+            }
+
+            CollectionAssert.AreEqual(source, results);
+        }
+
+        [TestMethod]
+        [Description("Create an uneven number of items and page through the results and make sure that each page contains items.")]
+        public async Task Query07()
+        {
+            for(var i = 0; i < 57; i++)
+            {
+                await Proxy.UpsertItemAsync(new { Id = Guid.NewGuid() });
+            }
+
+            var result = await Proxy.QueryItemsAsync(new QueryDefinition("select * from c"), new QueryOptions { MaxItemCount = 11 });
+            while(null != result)
+            {
+                Assert.IsTrue(result.Items.Any(), "There must be items in each result.");
+                result = await result.GetNextResultAsync();
+            }
+        }
 
 
         [TestMethod]
@@ -368,10 +443,40 @@ namespace Denomica.Cosmos.Extensions.Tests
         public string Partition { get; set; } = null!;
 
         public int Index { get; set; }
+
+        public override int GetHashCode()
+        {
+            return this.ToString().GetHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Item1 && this.ToString() == obj.ToString();
+        }
+
+        public override string ToString()
+        {
+            return $"{this.Id}|{this.Partition}|{this.Index}";
+        }
     }
 
     public class ChildItem1 : Item1
     {
         public string? DisplayName { get; set; }
+
+        public override int GetHashCode()
+        {
+            return this.ToString().GetHashCode();
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is ChildItem1 && this.ToString() == obj.ToString();
+        }
+
+        public override string ToString()
+        {
+            return $"{base.ToString()}|{this.DisplayName}";
+        }
     }
 }

@@ -312,30 +312,79 @@ namespace Denomica.Cosmos.Extensions
             {
                 ResponseMessage response = await this.GetResponseAsync(async () =>
                 {
-                    var iterator = this.Container.GetItemQueryStreamIterator(query, continuationToken: continuationToken);
-                    if (iterator.HasMoreResults)
-                    {
-                        return await iterator.ReadNextAsync();
-                    }
-
-                    return null;
+                    return await this.ReadNextResponseAsync(query, new QueryOptions { ContinuationToken = continuationToken });
                 });
                 continuationToken = response.ContinuationToken;
 
-                if (null != response?.Content)
+                foreach (var item in await this.ReadDocumentsFromResponseAsync(response))
                 {
-                    var json = await JsonDocument.ParseAsync(response.Content);
-                    if (json.RootElement.TryGetProperty("Documents", out var docs) && docs.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach (var item in docs.EnumerateArray())
-                        {
-                            yield return item;
-                        }
-                    }
+                    yield return item;
                 }
             } while (continuationToken?.Length > 0);
 
             yield break;
+        }
+
+        /// <summary>
+        /// Queries the underlying container for items and returns a set of results matching the <paramref name="query"/> and <paramref name="options"/>.
+        /// </summary>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="options">A set of options that define how the result set should be created.</param>
+        /// <remarks>
+        /// This method will only return the first set of results based on <paramref name="options"/>.
+        /// </remarks>
+        public async Task<QueryResult<JsonElement>> QueryItemsAsync(QueryDefinition query, QueryOptions options)
+        {
+            ResponseMessage response = await this.GetResponseAsync(async () =>
+            {
+                return await this.ReadNextResponseAsync(query, options);
+            });
+
+            var result = new QueryResult<JsonElement>(this, query, options)
+            {
+                Items = await this.ReadDocumentsFromResponseAsync(response), 
+                ContinuationToken = response?.Headers?.ContinuationToken, 
+                RequestCharge = response?.Headers?.RequestCharge ?? 0 
+            };
+
+            return result;
+        }
+
+        /// <summary>
+        /// Queries the underlying <see cref="Container"/> for items.
+        /// </summary>
+        /// <typeparam name="TItem">The type to return the items as.</typeparam>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="options">A set of options that define how the result set should be created.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        /// <remarks>
+        /// This method will only return the first set of results based on <paramref name="options"/>.
+        /// </remarks>
+        public async Task<QueryResult<TItem>> QueryItemsAsync<TItem>(QueryDefinition query, QueryOptions options, Type? returnAs = null)
+        {
+            QueryResult<JsonElement> jsonResult = await this.QueryItemsAsync(query, options);
+
+            var items = new List<TItem>();
+
+            foreach(var elem in jsonResult.Items)
+            {
+                var item = this.Convert<TItem>(elem, returnAs: returnAs);
+                if (null != item) items.Add(item);
+            }
+
+            var result = new QueryResult<TItem>(this, query, options, returnAs: returnAs)
+            {
+                Items = items,
+                ContinuationToken = jsonResult.ContinuationToken,
+                RequestCharge = jsonResult.RequestCharge
+            };
+
+            return result;
         }
 
         /// <summary>
@@ -363,15 +412,7 @@ namespace Denomica.Cosmos.Extensions
         {
             await foreach (var item in this.QueryItemsAsync(query))
             {
-                TItem resultItem = default!;
-                if(null == returnAs)
-                {
-                    resultItem = JsonSerializer.Deserialize<TItem>(item, options: this.SerializationOptions);
-                }
-                else
-                {
-                    resultItem = (TItem)JsonSerializer.Deserialize(item, returnAs, options: this.SerializationOptions);
-                }
+                TItem resultItem = this.Convert<TItem>(item, returnAs: returnAs);
                 if (null != resultItem)
                 {
                     yield return resultItem;
@@ -411,6 +452,48 @@ namespace Denomica.Cosmos.Extensions
         {
             return this.QueryItemsAsync<TItem>(query.ToQueryDefinition(), returnAs: returnAs);
         }
+
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and returns a result set based on <paramref name="options"/>.
+        /// </summary>
+        /// <typeparam name="TItem">The type for the items to return.</typeparam>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="options">A set of options that define how the result set should be created.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        /// <remarks>
+        /// This method will only return the first set of results based on <paramref name="options"/>.
+        /// </remarks>
+        public Task<QueryResult<TItem>> QueryItemsAsync<TItem>(IOrderedQueryable<TItem> query, QueryOptions options, Type? returnAs = null)
+        {
+            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition(), options, returnAs: returnAs);
+        }
+
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and returns a result set based on <paramref name="options"/>.
+        /// </summary>
+        /// <typeparam name="TItem">The type for the items to return.</typeparam>
+        /// <param name="query">The query to execute.</param>
+        /// <param name="options">A set of options that define how the result set should be created.</param>
+        /// <param name="returnAs">
+        /// An optional type that items returned will be converted to. Note that this type 
+        /// MUST derive from the type specified in <typeparamref name="TItem"/>. If this
+        /// parameter is not specified, the items are returned as the type specified
+        /// in <typeparamref name="TItem"/>.
+        /// </param>
+        /// <remarks>
+        /// This method will only return the first set of results based on <paramref name="options"/>.
+        /// </remarks>
+        public Task<QueryResult<TItem>> QueryItemsAsync<TItem>(IQueryable<TItem> query, QueryOptions options, Type? returnAs = null)
+        {
+            return this.QueryItemsAsync<TItem>(query.ToQueryDefinition(), options, returnAs: returnAs);
+        }
+
+
 
         /// <summary>
         /// Upserts the given item to the underlying <see cref="Container"/>.
@@ -502,6 +585,22 @@ namespace Denomica.Cosmos.Extensions
         }
 
 
+
+        private TItem Convert<TItem>(JsonElement element, Type? returnAs = null)
+        {
+            Type targetType = returnAs ?? typeof(TItem);
+            TItem resultItem = default!;
+            if (null == returnAs)
+            {
+                resultItem = JsonSerializer.Deserialize<TItem>(element, options: this.SerializationOptions);
+            }
+            else
+            {
+                resultItem = (TItem)JsonSerializer.Deserialize(element, returnAs, options: this.SerializationOptions);
+            }
+
+            return resultItem ?? throw new Exception($"Cannot convert given JSON element to type '{targetType.FullName}'.");
+        }
 
         /// <summary>
         /// Uses the <paramref name="responseProvider"/> delegate to get a response, optionally retrying until the
@@ -626,6 +725,43 @@ namespace Denomica.Cosmos.Extensions
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Reads documents from the given response message. This method assumes that the response is created by querying the database.
+        /// </summary>
+        private async Task<IEnumerable<JsonElement>> ReadDocumentsFromResponseAsync(ResponseMessage? response)
+        {
+            var result = new List<JsonElement>();
+
+            if(null != response?.Content)
+            {
+                var json = await JsonDocument.ParseAsync(response.Content);
+                if (json.RootElement.TryGetProperty("Documents", out var docs) && docs.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in docs.EnumerateArray())
+                    {
+                        result.Add(item);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Executes the given <paramref name="query"/> and reads the next response using the given <paramref name="options"/>.
+        /// </summary>
+        private async Task<ResponseMessage?> ReadNextResponseAsync(QueryDefinition query, QueryOptions options)
+        {
+            var queryOptions = new QueryRequestOptions { MaxItemCount = options?.MaxItemCount };
+            var iterator = this.Container.GetItemQueryStreamIterator(query, continuationToken: options?.ContinuationToken, requestOptions: queryOptions);
+            if(iterator.HasMoreResults)
+            {
+                return await iterator.ReadNextAsync();
+            }
+
+            return null;
         }
 
         /// <summary>
