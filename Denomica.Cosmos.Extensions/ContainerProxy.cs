@@ -512,6 +512,11 @@ namespace Denomica.Cosmos.Extensions
         /// <typeparam name="TItem">The type of the item.</typeparam>
         /// <param name="item">The item to upsert.</param>
         /// <param name="partitionKey">Optional partition key to use when storing the item in the underlying <see cref="Container"/>.</param>
+        /// <returns>
+        /// The method returns the added or inserted item. The type of the returned object is always the same type as the type
+        /// of the <paramref name="item"/> parameter. This means that <paramref name="item"/> must either be typed as <typeparamref name="TItem"/>
+        /// or a type derived from that type.
+        /// </returns>
         public async Task<TItem> UpsertItemAsync<TItem>(TItem item, PartitionKey? partitionKey = null)
         {
 
