@@ -231,7 +231,7 @@ namespace Denomica.Cosmos.Extensions
         /// Returns the first item matching the <paramref name="query"/> or <c>null</c> if no item is found.
         /// </summary>
         /// <param name="query">The query to use to find one item with.</param>
-        public async Task<JsonElement?> FirstOrDefaultAsync(QueryDefinition query)
+        public async Task<JsonElement?> QuerySingleItemAsync(QueryDefinition query)
         {
             JsonElement? result = null;
             var items = this.QueryItemsAsync(query);
@@ -254,7 +254,7 @@ namespace Denomica.Cosmos.Extensions
         /// parameter is not specified, the items are returned as the type specified
         /// in <typeparamref name="TItem"/>.
         /// </param>
-        public async Task<TItem> FirstOrDefaultAsync<TItem>(QueryDefinition query, Type? returnAs = null)
+        public async Task<TItem> QuerySingleItemAsync<TItem>(QueryDefinition query, Type? returnAs = null)
         {
             TItem result = default!;
             var items = this.QueryItemsAsync<TItem>(query, returnAs: returnAs);
@@ -278,9 +278,9 @@ namespace Denomica.Cosmos.Extensions
         /// parameter is not specified, the items are returned as the type specified
         /// in <typeparamref name="TItem"/>.
         /// </param>
-        public async Task<TItem> FirstOrDefaultAsync<TItem>(IQueryable<TItem> linqQuery, Type? returnAs = null)
+        public async Task<TItem> QuerySingleItemAsync<TItem>(IQueryable<TItem> linqQuery, Type? returnAs = null)
         {
-            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
+            return await this.QuerySingleItemAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
         }
 
         /// <summary>
@@ -294,9 +294,9 @@ namespace Denomica.Cosmos.Extensions
         /// parameter is not specified, the items are returned as the type specified
         /// in <typeparamref name="TItem"/>.
         /// </param>
-        public async Task<TItem> FirstOrDefaultAsync<TItem>(IOrderedQueryable<TItem> linqQuery, Type? returnAs = null)
+        public async Task<TItem> QuerySingleItemAsync<TItem>(IOrderedQueryable<TItem> linqQuery, Type? returnAs = null)
         {
-            return await this.FirstOrDefaultAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
+            return await this.QuerySingleItemAsync<TItem>(linqQuery.Take(1).ToQueryDefinition(), returnAs: returnAs);
         }
 
         /// <summary>

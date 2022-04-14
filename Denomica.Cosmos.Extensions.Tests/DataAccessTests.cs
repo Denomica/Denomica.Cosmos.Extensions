@@ -156,8 +156,8 @@ namespace Denomica.Cosmos.Extensions.Tests
             await Proxy.UpsertItemAsync(itm1);
             await Proxy.UpsertItemAsync(itm2);
 
-            var itm1b = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Id == itm1.Id), typeof(ChildItem1)) as ChildItem1;
-            var itm2b = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Id == itm2.Id), typeof(ChildItem1)) as ChildItem1;
+            var itm1b = await Proxy.QuerySingleItemAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Id == itm1.Id), typeof(ChildItem1)) as ChildItem1;
+            var itm2b = await Proxy.QuerySingleItemAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Id == itm2.Id), typeof(ChildItem1)) as ChildItem1;
 
             Assert.IsNotNull(itm1b);
             Assert.IsNotNull(itm2b);
@@ -262,10 +262,10 @@ namespace Denomica.Cosmos.Extensions.Tests
                 i++;
             }
 
-            var item1 = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Partition == "p"));
+            var item1 = await Proxy.QuerySingleItemAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().Where(x => x.Partition == "p"));
             Assert.IsNotNull(item1);
 
-            var item2 = await Proxy.FirstOrDefaultAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().OrderByDescending(x => x.Index));
+            var item2 = await Proxy.QuerySingleItemAsync<Item1>(Proxy.GetItemLinqQueryable<Item1>().OrderByDescending(x => x.Index));
             Assert.IsNotNull(item2);
             Assert.AreEqual(ids.Last(), item2.Id);
         }
