@@ -12,4 +12,4 @@ Major improvements in various versions.
 
 ### v1.0.1
 
-Just updated the version number from 1.0.0.1 to 1.0.1 to better be in line with SemVer 2.
+Just updated the version number from 1.0.0.1 to 1.0.1 to better be in line with [SemVer 2](https://semver.org/).
