@@ -54,7 +54,11 @@ namespace Denomica.Cosmos.Extensions
             return this;
         }
 
-        private List<KeyValuePair<string, object>> Parameters = new List<KeyValuePair<string, object>>();
+        /// <summary>
+        /// The dictionary containing the parameters added to the builder.
+        /// </summary>
+        public IDictionary<string, object> Parameters { get; private set; } = new Dictionary<string, object>();
+
         /// <summary>
         /// Adds a parameter to the query definition.
         /// </summary>
@@ -62,7 +66,13 @@ namespace Denomica.Cosmos.Extensions
         /// <param name="value">The value of the parameter.</param>
         public QueryDefinitionBuilder WithParameter(string name, object value)
         {
-            this.Parameters.Add(new KeyValuePair<string, object>(name, value));
+            if(this.Parameters.ContainsKey(name))
+            {
+                throw new ArgumentException($"Parameters '{name}' already exsists in the parameter collection.", nameof(name));
+            }
+
+            this.Parameters[name] = value;
+
             return this;
         }
 
