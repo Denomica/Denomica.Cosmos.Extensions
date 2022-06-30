@@ -1,4 +1,3 @@
-using Denomica.Cosmos.Extensions.Tests.Configuration;
 using Denomica.Cosmos.Extensions;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
@@ -19,54 +18,31 @@ namespace Denomica.Cosmos.Extensions.Tests
     {
 
         [ClassInitialize]
-        public static void ClassInit(TestContext context)
+        public static async Task ClassInit(TestContext context)
         {
-            var configRoot = new ConfigurationBuilder()
-                .SetBasePath(context.TestDeploymentDir)
-                .AddJsonFile("test.settings.json", optional: false)
+            var connectionString = $"{context.Properties["connectionString"]}";
+            var databaseId = $"{context.Properties["databaseId"]}";
+            var containerId = $"{context.Properties["containerId"]}";
 
-                .Build();
+            var client = new CosmosClient(connectionString);
+            var database = client.GetDatabase(databaseId);
+            var container = database.GetContainer(containerId);
 
-            ServiceProvider = new ServiceCollection()
-                .AddSingleton(configRoot)
-                .AddSingleton<IConfiguration>(configRoot)
-                .AddSingleton<ConnectionOptions>(sp =>
-                {
-                    var root = sp.GetRequiredService<IConfiguration>();
-                    var config = new ConnectionOptions();
-                    root.Bind("denomica:cosmos:extensions:tests", config);
-                    return config;
-                })
-                .AddSingleton<CosmosClient>(sp =>
-                {
-                    var options = sp.GetRequiredService<ConnectionOptions>();
-                    return new CosmosClient(
-                        options.ConnectionString, 
-                        clientOptions: new CosmosClientOptions
-                        {
-                            SerializerOptions = new CosmosSerializationOptions
-                            {
-                                PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
-                            }
-                        }
-                    );
-                })
-                .AddSingleton<Container>(sp =>
-                {
-                    var client = sp.GetRequiredService<CosmosClient>();
-                    var options = sp.GetRequiredService<ConnectionOptions>();
+            try
+            {
+                var deleteResponse = await container.DeleteContainerAsync();
+            }
+            catch { }
 
-                    return client.GetContainer(options.DatabaseId, options.ContainerId);
-                })
-                .BuildServiceProvider();
-
-            Options = ServiceProvider.GetRequiredService<ConnectionOptions>();
-            DataContainer = ServiceProvider.GetRequiredService<Container>();
-            Proxy = new ContainerProxy(DataContainer);
+            var containerResponse = await database.CreateContainerAsync(new ContainerProperties { Id = containerId, PartitionKeyPath = "/partition" });
+            DataContainer = database.GetContainer(containerId);
+            Proxy = new ContainerProxy(database.GetContainer(containerId), new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
         }
 
-        private static ServiceProvider ServiceProvider = null!;
-        private static ConnectionOptions Options = null!;
         private static Container DataContainer = null!;
         private static ContainerProxy Proxy = null!;
 

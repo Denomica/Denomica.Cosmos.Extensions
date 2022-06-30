@@ -30,11 +30,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Denomica.Cosmos.Extensions\Denomica.Cosmos.Extensions.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Update="test.settings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
