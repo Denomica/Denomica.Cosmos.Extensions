@@ -21,7 +21,9 @@ namespace Denomica.Cosmos.Extensions.Tests
             var databaseId = $"{context.Properties["databaseId"]}";
             var containerId = $"{context.Properties["containerId"]}";
 
-            var client = new CosmosClient(connectionString);
+            var client = new CosmosClient(connectionString, new CosmosClientOptions { 
+                SerializerOptions = new CosmosSerializationOptions { PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase } 
+            });
             var database = client.GetDatabase(databaseId);
             var container = database.GetContainer(containerId);
 
