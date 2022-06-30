@@ -550,7 +550,7 @@ namespace Denomica.Cosmos.Extensions
                      * The response must be handled this way to ensure that we return the response as the 
                      * same type as the item parameter is.
                      * 
-                     * Note that the type of item can also be a type derifed from TItem. If we would use
+                     * Note that the type of item can also be a type derived from TItem. If we would use
                      * the standard functionality provided by the Cosmos DB SDK, the response from the
                      * server would be typed as TItem, not as a derived type.
                      * 
