@@ -1,11 +1,8 @@
 using Denomica.Cosmos.Extensions;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 using System.Linq;
-using System.IO;
 using System.Collections.Generic;
 using System;
 using System.Text.Json;
