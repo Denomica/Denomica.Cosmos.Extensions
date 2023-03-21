@@ -17,3 +17,7 @@ Just updated the version number from 1.0.0.1 to 1.0.1 to better be in line with 
 ### v1.1.0
 
 Exposed the `Parameters` dictionary on the `QueryDefinitionBuilder` class to have a better control on what parameters have already been added to the builder.
+
+### v1.2.0
+
+Introduced a set of model classes that you can use as base for your data model classes when storing data in Cosmos DB. Read more about data modelling support on the [wiki](https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki/Data-Modelling).
