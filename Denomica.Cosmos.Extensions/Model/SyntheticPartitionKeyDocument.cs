@@ -28,9 +28,23 @@ namespace Denomica.Cosmos.Extensions.Model
         /// <summary>
         /// The separator string to use when constructing the synthetic partition key stored in <see cref="Partition"/>.
         /// </summary>
+        /// <remarks>
+        /// Default is <c>"/"</c>.
+        /// </remarks>
         protected virtual string PartitionKeyPropertySeparator
         {
             get { return "/"; }
+        }
+
+        /// <summary>
+        /// Defines whether to use partition key properties from base classes too.
+        /// </summary>
+        /// <remarks>
+        /// Default is <c>true</c>.
+        /// </remarks>
+        protected virtual bool InheritPartitionKeyProperties
+        {
+            get { return true; }
         }
 
         /// <summary>
@@ -42,7 +56,11 @@ namespace Denomica.Cosmos.Extensions.Model
             var changedProp = this.GetType().GetProperty(e.Name);
             if(null != changedProp)
             {
-                var partitionProps = from x in this.GetType().GetProperties()
+                var propFlags = this.InheritPartitionKeyProperties
+                    ? BindingFlags.Instance | BindingFlags.Public
+                    : BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly;
+
+                var partitionProps = from x in this.GetType().GetProperties(propFlags)
                                      where null != x.GetCustomAttribute<PartitionKeyPropertyAttribute>(false)
                                      orderby x.GetCustomAttribute<PartitionKeyPropertyAttribute>().Index
                                      select x;
