@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -67,6 +68,34 @@ namespace Denomica.Cosmos.Extensions.Tests
             Assert.AreEqual(m.Foo, m.Partition);
         }
 
+        [TestMethod]
+        public void TestModel08()
+        {
+            var m = new TestDocument5 { Timestamp = new DateTime(2023, 3, 9) };
+            Assert.AreEqual("20230309", m.Partition);
+        }
+
+        [TestMethod]
+        public void TestModel09()
+        {
+            var m1 = new TestDocument6 { Index = 4 };
+            var m2 = new TestDocument6 { Index = 45 };
+            var m3 = new TestDocument6 { Index = 183 };
+
+
+            Assert.AreEqual("04", m1.Partition);
+            Assert.AreEqual("45", m2.Partition);
+            Assert.AreEqual("183", m3.Partition);
+        }
+
+        [TestMethod]
+        public void TestModel10()
+        {
+            var m = new TestDocument7 { D1 = 5.3, D2 = 12.5 };
+            Assert.AreEqual("5.3/12,5", m.Partition);
+        }
+
+
 
         [TestMethod]
         public void TestModelEvents01()
@@ -124,6 +153,49 @@ namespace Denomica.Cosmos.Extensions.Tests
         }
 
         public override string Type { get => base.Type; set => base.Type = value; }
+    }
+
+    public class TestDocument5 : TestDocument
+    {
+        [PartitionKeyProperty(0, formatString: "yyyyMMdd")]
+        public DateTime Timestamp
+        {
+            get { return this.GetProperty<DateTime>(nameof(Timestamp)); }
+            set { this.SetProperty(nameof(Timestamp), value); }
+        }
+
+        protected override bool InheritPartitionKeyProperties => false;
+    }
+
+    public class TestDocument6 : TestDocument
+    {
+        [PartitionKeyProperty(0, formatString: "D2")]
+        public int Index
+        {
+            get { return this.GetProperty<int>(nameof(Index)); }
+            set { this.SetProperty(nameof(Index), value); }
+        }
+
+        protected override bool InheritPartitionKeyProperties => false;
+    }
+
+    public class TestDocument7 : TestDocument
+    {
+        [PartitionKeyProperty(0, formatString: "F1", culture: "en-US")]
+        public double D1
+        {
+            get { return this.GetProperty<double>(nameof(D1)); }
+            set { this.SetProperty(nameof(D1), value); }
+        }
+
+        [PartitionKeyProperty(1, formatString: "F1", culture: "fi-FI")]
+        public double D2
+        {
+            get { return this.GetProperty<double>(nameof(D2)); }
+            set { this.SetProperty(nameof(D2), value); }
+        }
+
+        protected override bool InheritPartitionKeyProperties => false;
     }
 
 

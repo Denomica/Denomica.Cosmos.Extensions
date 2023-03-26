@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -80,7 +81,25 @@ namespace Denomica.Cosmos.Extensions.Model
         /// <param name="partitionProperties"></param>
         protected virtual void SetPartition(IEnumerable<PropertyInfo> partitionProperties)
         {
-            this.Partition = string.Join(this.PartitionKeyPropertySeparator, from x in partitionProperties select x.GetValue(this));
+            var elements = new List<object>();
+
+            foreach(var property in partitionProperties)
+            {
+                var a = property.GetCustomAttribute<PartitionKeyPropertyAttribute>();
+                var val = property.GetValue(this);
+                var ci = a?.Culture?.Length > 0 ? new CultureInfo(a.Culture) : CultureInfo.InvariantCulture;
+
+                if (a?.FormatString?.Length > 0)
+                {
+                    elements.Add(string.Format(ci, $"{{0:{a.FormatString}}}", property.GetValue(this)));
+                }
+                else
+                {
+                    elements.Add($"{val}");
+                }
+            }
+
+            this.Partition = string.Join(this.PartitionKeyPropertySeparator, elements);
         }
     }
 }
