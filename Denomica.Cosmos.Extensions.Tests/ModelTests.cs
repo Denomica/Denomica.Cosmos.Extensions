@@ -95,6 +95,13 @@ namespace Denomica.Cosmos.Extensions.Tests
             Assert.AreEqual("5.3/12,5", m.Partition);
         }
 
+        [TestMethod]
+        public void TestModel11()
+        {
+            var doc = new AdvancePartitionDocument { Timestamp = new DateTimeOffset(2023, 3, 1, 0, 0, 0, TimeSpan.FromHours(2)) };
+            Assert.AreEqual("AdvancePartitionDocument/Foo/202303", doc.Partition);
+        }
+
 
 
         [TestMethod]
@@ -219,5 +226,11 @@ namespace Denomica.Cosmos.Extensions.Tests
         public override string Type { get => base.Type; set => base.Type = value; }
 
         protected override string PartitionKeyPropertySeparator => "|";
+    }
+
+    public class AdvancePartitionDocument : TestDocument
+    {
+        [PartitionKeyProperty(1, formatString: "Foo/{0:yyyyMM}")]
+        public DateTimeOffset Timestamp { get; set; }
     }
 }

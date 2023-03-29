@@ -91,7 +91,11 @@ namespace Denomica.Cosmos.Extensions.Model
 
                 if (a?.FormatString?.Length > 0)
                 {
-                    elements.Add(string.Format(ci, $"{{0:{a.FormatString}}}", property.GetValue(this)));
+                    var fs = a.FormatString.Contains('{')
+                        ? a.FormatString
+                        : $"{{0:{a.FormatString}}}";
+
+                    elements.Add(string.Format(ci, fs, property.GetValue(this)));
                 }
                 else
                 {

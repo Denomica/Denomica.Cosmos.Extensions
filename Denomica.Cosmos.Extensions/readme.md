@@ -21,3 +21,7 @@ Exposed the `Parameters` dictionary on the `QueryDefinitionBuilder` class to hav
 ### v1.2.0
 
 Introduced a set of model classes that you can use as base for your data model classes when storing data in Cosmos DB. Read more about data modelling support on the [wiki](https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki/Data-Modelling).
+
+### v1.2.1
+
+Added support for more advanced format strings in the `PartitionKeyPropertyAttribute`.
