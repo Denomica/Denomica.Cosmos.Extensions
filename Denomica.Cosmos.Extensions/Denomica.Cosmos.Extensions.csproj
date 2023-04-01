@@ -24,4 +24,8 @@
 	  <None Include="readme.md" Pack="True" PackagePath="\" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <ProjectReference Include="..\Denomica.Cosmos.Extensions.Model\Denomica.Cosmos.Extensions.Model.csproj" />
+	</ItemGroup>
+
 </Project>

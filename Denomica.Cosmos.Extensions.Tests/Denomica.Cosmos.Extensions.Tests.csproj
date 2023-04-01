@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Denomica.Cosmos.Extensions.Model\Denomica.Cosmos.Extensions.Model.csproj" />
     <ProjectReference Include="..\Denomica.Cosmos.Extensions\Denomica.Cosmos.Extensions.csproj" />
   </ItemGroup>
 </Project>
