@@ -1,8 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<Nullable>enable</Nullable>
+		<Description>Model classes used by the Denomica.Cosmos.Extensions package.</Description>
+		<Copyright>Copyright (c) 2023 Denomica Oy</Copyright>
+		<PackageProjectUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions</RepositoryUrl>
+		<PackageReadmeFile>readme.md</PackageReadmeFile>
+		<PackageTags>Azure;Cosmos DB;Data Model</PackageTags>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+		<Version>1.2.2-rc01</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Update="readme.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
 
 </Project>
