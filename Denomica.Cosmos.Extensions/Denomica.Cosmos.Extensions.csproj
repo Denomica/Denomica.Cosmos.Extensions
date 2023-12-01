@@ -16,8 +16,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Denomica.Text.Json" Version="1.0.0" />
-		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.26.1" />
+		<PackageReference Include="Denomica.Text.Json" Version="1.0.2" />
+		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.37.0" />
 		<PackageReference Include="System.Text.Json" Version="6.0.2" />
 	</ItemGroup>
 
