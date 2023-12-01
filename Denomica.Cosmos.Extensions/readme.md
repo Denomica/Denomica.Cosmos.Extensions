@@ -10,22 +10,31 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
-### v1.0.1
+### v1.2.3
 
-Just updated the version number from 1.0.0.1 to 1.0.1 to better be in line with [SemVer 2](https://semver.org/).
+Included XML documentation file in the package to provide Intellisense documentation.
 
-### v1.1.0
+### v1.2.2
 
-Exposed the `Parameters` dictionary on the `QueryDefinitionBuilder` class to have a better control on what parameters have already been added to the builder.
-
-### v1.2.0
-
-Introduced a set of model classes that you can use as base for your data model classes when storing data in Cosmos DB. Read more about data modelling support on the [wiki](https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki/Data-Modelling).
+Extracted model classes into separate package [Denomica.Cosmos.Extensions.Model](https://www.nuget.org/packages/Denomica.Cosmos.Extensions.Model). This enables using the model classes in client applications not directly using Cosmos DB, but accesses the data through a REST API for instance.
 
 ### v1.2.1
 
 Added support for more advanced format strings in the `PartitionKeyPropertyAttribute`.
 
-### v1.2.2
+### v1.2.0
 
-Extracted model classes into separate package [Denomica.Cosmos.Extensions.Model](https://www.nuget.org/packages/Denomica.Cosmos.Extensions.Model). This enables using the model classes in client applications not directly using Cosmos DB, but accesses the data through a REST API for instance.
+Introduced a set of model classes that you can use as base for your data model classes when storing data in Cosmos DB. Read more about data modelling support on the [wiki](https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki/Data-Modelling).
+
+### v1.1.0
+
+Exposed the `Parameters` dictionary on the `QueryDefinitionBuilder` class to have a better control on what parameters have already been added to the builder.
+
+### v1.0.1
+
+Just updated the version number from 1.0.0.1 to 1.0.1 to better be in line with [SemVer 2](https://semver.org/).
+
+
+
+
+

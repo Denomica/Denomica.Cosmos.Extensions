@@ -10,6 +10,10 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
+### v1.2.3
+
+Included XML documentation file in the package to provide Intellisense documentation.
+
 ### v1.2.2
 
 Extracted model classes from [Denomica.Cosmos.Extensions](https://www.nuget.org/packages/Denomica.Cosmos.Extensions) into separate package in order to be able to use the model classes client applications not directly connected to Cosmos DB.
