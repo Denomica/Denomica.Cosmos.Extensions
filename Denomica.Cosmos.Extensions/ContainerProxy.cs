@@ -43,13 +43,31 @@ namespace Denomica.Cosmos.Extensions
         /// The default number of milliseconds to wait before retrying an operation that produced a response with 
         /// HTTP 429 status. This value is only used if no other information is available with the HTTP 429 response.
         /// </param>
-        /// <param name="maxRetryCount">
-        /// The maximum number of retries allowed when retrying HTTP 429 responses.
-        /// </param>
         /// <exception cref="ArgumentNullException">The exception that is thrown if <paramref name="container"/> is <c>null</c>.</exception>
         public ContainerProxy(Container container, JsonSerializerOptions? serializationOptions = null, int defaultRetryAfterMilliseconds = 5000)
         {
             this.Container = container ?? throw new ArgumentNullException(nameof(container));
+            this.SerializationOptions = serializationOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            this.DefaultRetryAfterMilliseconds = defaultRetryAfterMilliseconds;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the proxy class.
+        /// </summary>
+        /// <param name="client">The Cosmos client to use to access data.</param>
+        /// <param name="databaseId">The ID of the database to connect to.</param>
+        /// <param name="containerId">The ID of the container to connect to.</param>
+        /// <param name="serializationOptions">
+        /// Optional JSON serialization options that are used by this wrapper when serializing and deserializing.
+        /// </param>
+        /// <param name="defaultRetryAfterMilliseconds">
+        /// The default number of milliseconds to wait before retrying an operation that produced a response with 
+        /// HTTP 429 status. This value is only used if no other information is available with the HTTP 429 response.
+        /// </param>
+        public ContainerProxy(CosmosClient client, string databaseId, string containerId, JsonSerializerOptions? serializationOptions = null, int defaultRetryAfterMilliseconds = 5000)
+        {
+            var db = client.GetDatabase(databaseId);
+            this.Container = db.GetContainer(containerId);
             this.SerializationOptions = serializationOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
             this.DefaultRetryAfterMilliseconds = defaultRetryAfterMilliseconds;
         }
