@@ -11,14 +11,14 @@
 		<PackageTags>Azure;Cosmos DB</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>1.2.3</Version>
+		<Version>1.2.4</Version>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Denomica.Text.Json" Version="1.0.2" />
-		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.37.0" />
-		<PackageReference Include="System.Text.Json" Version="6.0.2" />
+		<PackageReference Include="Denomica.Text.Json" Version="1.0.5" />
+		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.44.1" />
+		<PackageReference Include="System.Text.Json" Version="6.0.11" />
 	</ItemGroup>
 
 	<ItemGroup>
