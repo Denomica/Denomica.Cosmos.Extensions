@@ -10,6 +10,10 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
+### v1.2.5
+
+Added a few extra overloaded methods to the `QueryDefinitionBuilder` class.
+
 ### v1.2.4
 
 Updated a few Nuget packages, one of which had a vulnerable version.

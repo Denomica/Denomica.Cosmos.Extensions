@@ -92,18 +92,49 @@ namespace Denomica.Cosmos.Extensions
         }
 
         /// <summary>
+        /// Adds a parameter to the query if <paramref name="condition"/> is <c>true</c>.
+        /// </summary>
+        /// <param name="name">The name of the parameter.</param>
+        /// <param name="valueProvider">A function that returns the value for the parameter. This function is only called if <paramref name="condition"/> is <c>true</c>.</param>
+        /// <param name="condition">The condition that determines whether the specified parameter is added to the query definition.</param>
+        public QueryDefinitionBuilder WithParameterIf(string name, Func<object> valueProvider, bool condition)
+        {
+            if(condition)
+            {
+                this.WithParameter(name, valueProvider());
+            }
+
+            return this;
+        }
+
+        /// <summary>
         /// Adds a parameter to the query if <paramref name="condition"/> returns <c>true</c>.
         /// </summary>
         /// <param name="name">The name of the parameter.</param>
         /// <param name="value">The value of the parameter.</param>
         /// <param name="condition">A delegate that returns a boolean value indicating whether the given parameter should be added to the query definition.</param>
-        /// <returns></returns>
         public async Task<QueryDefinitionBuilder> WithParameterIfAsync(string name, object value, Func<Task<bool>> condition)
         {
             if(await condition())
             {
                 this.WithParameter(name, value);
             }
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a parameter to the query if <paramref name="condition"/> returns <c>true</c>.
+        /// </summary>
+        /// <param name="name">The name of the parameter.</param>
+        /// <param name="valueProvider">A function that returns the value for the parameter. This function is only called if <paramref name="condition"/> is <c>true</c>.</param>
+        /// <param name="condition">A delegate that returns a boolean value indicating whether the given parameter should be added to the query definition.</param>
+        public async Task<QueryDefinitionBuilder> WithParameterIfAsync(string name, Func<Task<object>> valueProvider, Func<Task<bool>> condition)
+        {
+            if(await condition())
+            {
+                this.WithParameter(name, await valueProvider());
+            }
+
             return this;
         }
 
