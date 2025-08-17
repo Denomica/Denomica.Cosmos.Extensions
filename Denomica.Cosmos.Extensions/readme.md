@@ -10,6 +10,10 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
+### v.1.2.6
+
+Added support for Dependency Injection with the `IServiceCollection.AddCosmosExtensions()` extension method, and the `CosmosExtensionsBuilder` class.
+
 ### v1.2.5
 
 Added a few extra overloaded methods to the `QueryDefinitionBuilder` class.

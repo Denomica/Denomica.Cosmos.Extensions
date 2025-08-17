@@ -226,7 +226,7 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <param name="id">The ID of the item to delete.</param>
         /// <param name="partition">The partition key of the item to delete. Set to <c>null</c> if the item is stored without a partition.</param>
-        /// <param name="throwIfNotfound">
+        /// <param name="throwIfNotFound">
         /// Specifies whether to throw an exception if the specified document is not
         /// found. Defaults to <c>true</c>.
         /// </param>
@@ -253,7 +253,7 @@ namespace Denomica.Cosmos.Extensions
         public async IAsyncEnumerable<JsonElement> QueryItemsAsync(QueryDefinition query)
         {
             string? continuationToken = null;
-
+            
             do
             {
                 ResponseMessage response = await this.GetResponseAsync(async () =>
@@ -666,7 +666,6 @@ namespace Denomica.Cosmos.Extensions
         /// </summary>
         /// <typeparam name="TResource"></typeparam>
         /// <param name="response">The response to examine.</param>
-        /// <param name="defaultRetryAfterMilliseconds">The default delay to wait for in case the response contained HTTP status code 429.</param>
         /// <returns>Returns <c>true</c> if a retry delay was found in the response.</returns>
         /// <remarks>
         /// If a retry after delay was found in the response, this method will wait for that amount of time before returning.
