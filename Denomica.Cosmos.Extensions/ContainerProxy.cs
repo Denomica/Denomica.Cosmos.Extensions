@@ -30,6 +30,7 @@ namespace Denomica.Cosmos.Extensions
     /// comes in handy.
     /// </para>
     /// </remarks>
+    [Obsolete("This class is obsolete and will be removed in a future version. Use the QueryService class instead.")]
     public class ContainerProxy
     {
         /// <summary>

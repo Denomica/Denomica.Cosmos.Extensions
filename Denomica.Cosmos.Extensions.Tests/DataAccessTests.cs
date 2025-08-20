@@ -44,6 +44,7 @@ namespace Denomica.Cosmos.Extensions.Tests
 
         private static Container DataContainer = null!;
         private static ContainerProxy Proxy = null!;
+        private static QueryService Query = null!;
 
 
         [TestInitialize]

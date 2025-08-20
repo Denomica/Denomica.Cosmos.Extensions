@@ -56,12 +56,20 @@ namespace Denomica.Cosmos.Extensions.Configuration
                     var clientOptions = sp.GetRequiredService<IOptions<CosmosClientOptions>>().Value;
                     return new CosmosClient(connectionOptions.ConnectionString, clientOptions);
                 })
-                .AddScoped<ContainerProxy>(sp =>
+                .AddScoped<QueryService>(sp =>
                 {
-                    var connectionOptions = sp.GetRequiredService<IOptions<CosmosConnectionOptions>>().Value;
                     var client = sp.GetRequiredService<CosmosClient>();
-                    return new ContainerProxy(client, connectionOptions.DatabaseId, connectionOptions.ContainerId);
+                    var options = sp.GetRequiredService<IOptions<CosmosConnectionOptions>>().Value;
+                    var db = client.GetDatabase(options.DatabaseId);
+                    var container = db.GetContainer(options.ContainerId);
+                    return new QueryService(client, container);
                 })
+                //.AddScoped<ContainerProxy>(sp =>
+                //{
+                //    var connectionOptions = sp.GetRequiredService<IOptions<CosmosConnectionOptions>>().Value;
+                //    var client = sp.GetRequiredService<CosmosClient>();
+                //    return new ContainerProxy(client, connectionOptions.DatabaseId, connectionOptions.ContainerId);
+                //})
                 ;
 
             return this;
