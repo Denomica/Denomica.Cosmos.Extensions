@@ -21,7 +21,7 @@ namespace Denomica.Cosmos.Extensions.Model
         public virtual string Id
         {
             get { return this.GetProperty<string>(nameof(Id), () => Guid.NewGuid().ToString()); }
-            set { this.SetProperty(nameof(Id), value); }
+            set { this.SetProperty(nameof(Id), value.Replace("#", "_").Replace("/", "_").Replace("\\", "_")); }
         }
 
         /// <summary>

@@ -10,6 +10,10 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
+### v1.2.7
+
+Updated reference to [`Denomica.Cosmos.Extensls.Model`](https://www.nuget.org/packages/Denomica.Cosmos.Extensions.Model/) to v1.2.4, which contains a fix that better handles illegal characters in the `DocumentBase.Id` property.
+
 ### v.1.2.6
 
 Added support for Dependency Injection with the `IServiceCollection.AddCosmosExtensions()` extension method, and the `CosmosExtensionsBuilder` class.

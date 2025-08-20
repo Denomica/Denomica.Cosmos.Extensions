@@ -11,7 +11,7 @@
 		<PackageTags>Azure;Cosmos DB;Data Model</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>1.2.3</Version>
+		<Version>1.2.4</Version>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
