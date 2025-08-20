@@ -10,6 +10,10 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
+### v1.2.4
+
+Fixed the DocumentBase.Id property to replace illegal characters in the ID with underscores.
+
 ### v1.2.3
 
 Included XML documentation file in the package to provide Intellisense documentation.
