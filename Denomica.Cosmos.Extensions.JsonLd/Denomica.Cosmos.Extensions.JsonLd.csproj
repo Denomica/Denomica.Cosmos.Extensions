@@ -3,7 +3,8 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.1</TargetFramework>
 		<Nullable>enable</Nullable>
-		<Description>Utilities for working with data in Azure Cosmos DB.</Description>
+		<Version>1.0.0-beta.1</Version>
+		<Description>Facilitates storing JSON-LD documents in Cosmos DB.</Description>
 		<Copyright>Copyright (c) 2023 Denomica Oy</Copyright>
 		<PackageProjectUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions/wiki</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Denomica/Denomica.Cosmos.Extensions</RepositoryUrl>
@@ -11,24 +12,24 @@
 		<PackageTags>Azure;Cosmos DB</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Version>1.2.8</Version>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Denomica.Text.Json" Version="1.0.5" />
-		<PackageReference Include="Microsoft.Azure.Cosmos" Version="3.44.1" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.0" />
-		<PackageReference Include="System.Text.Json" Version="6.0.11" />
+		<PackageReference Include="Schema.NET" Version="13.0.0" />
+		<PackageReference Include="System.Text.Json" Version="8.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <None Include="readme.md" Pack="True" PackagePath="\" />
+		<ProjectReference Include="..\Denomica.Cosmos.Extensions.Model\Denomica.Cosmos.Extensions.Model.csproj" />
+		<ProjectReference Include="..\Denomica.Cosmos.Extensions\Denomica.Cosmos.Extensions.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Denomica.Cosmos.Extensions.Model\Denomica.Cosmos.Extensions.Model.csproj" />
+		<None Update="readme.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
 	</ItemGroup>
-
 </Project>

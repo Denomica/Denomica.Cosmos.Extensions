@@ -10,6 +10,13 @@ For more information, check out the [library wiki](https://github.com/Denomica/D
 
 Major improvements in various versions.
 
+### v1.2.8
+
+Added default configurations for JSON serialization when calling `IServiceCollection.AddCosmosExtensions()`.
+- Property naming uses camelCase.
+- `Null` values are ignored.
+- Property names are case insensitive during deserialization.
+
 ### v1.2.7
 
 Updated reference to [`Denomica.Cosmos.Extensls.Model`](https://www.nuget.org/packages/Denomica.Cosmos.Extensions.Model/) to v1.2.4, which contains a fix that better handles illegal characters in the `DocumentBase.Id` property.

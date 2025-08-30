@@ -1,0 +1,10 @@
+{
+  "@type": "Thing",
+  "@id": "foo-bar",
+  "name": "The Thing",
+  "description": {
+    "@context": "https://schema.org",
+    "@type": "TextObject",
+    "text": "This is my thing with a text object description."
+  }
+}
